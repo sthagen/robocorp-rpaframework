@@ -4,6 +4,37 @@ Release notes
 Upcoming release
 ----------------
 
+9.3.3
+-----
+
+- Library **RPA.Cloud.Google**: Fix mimetype error with ``Drive Upload File``
+
+9.3.2
+-----
+
+- Library **RPA.Email.Exchange**: Fix ``Empty Folder`` keyword
+
+9.3.1
+-----
+
+- Library **RPA.Cloud.Google**: Add missing service account support for ``Drive`` and ``Apps Script``
+
+9.3.0
+-----
+
+- Library **RPA.PDF**:
+
+  - Add keywords ``Save Figure As Image`` and ``Save Figures As Images`` to save PDF Figure objects
+  - Add keyword ``Add Files To PDF`` to combine images and/or a PDFs (or pages from PDF) to new PDF
+  - Improved performance by setting pdfminer log level to INFO
+
+- Library **RPA.Dialogs**:
+
+  - Add new keyword ``Add Password Input``, see (:pr:`161`)
+  - Logging from keyword ``Request Response`` is now suppressed in Robot Framework logs
+
+Thank you https://github.com/antusystem for submitting the pull request!
+
 9.2.1
 -----
 
