@@ -256,6 +256,13 @@ def test_find_empty_row(library):
     assert row == 11
 
 
+def test_get_worksheet_value(library):
+    assert library.get_worksheet_value(5, "A") == 4
+    assert library.get_worksheet_value(5, "C") == 3549
+    assert library.get_worksheet_value(3, 3) == 1582
+    assert library.get_worksheet_value(9, "E", "First") == "United States"
+
+
 def test_set_worksheet_value(library):
     library.set_worksheet_value(11, "A", "First")
     library.set_worksheet_value(11, 2, "Second")
@@ -272,3 +279,14 @@ def test_set_worksheet_value(library):
 def test_insert_image_to_worksheet(library):
     library.insert_image_to_worksheet(10, "B", "tests/resources/faces.jpeg", scale=4)
     library.save_workbook(BytesIO())
+
+
+@pytest.mark.parametrize("fmt", ("xlsx", "xls"))
+def test_create_workbook_default_sheet(fmt):
+    library = Files()
+
+    library.create_workbook(fmt=fmt)
+    assert library.list_worksheets() == ["Sheet"]
+
+    library.create_worksheet("Test")
+    assert library.list_worksheets() == ["Sheet", "Test"]

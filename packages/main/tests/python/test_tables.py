@@ -382,6 +382,19 @@ def test_keyword_filter_table_by_column_in(library, table):
     assert all(row["two"] != 2 for row in table)
 
 
+def test_keyword_filter_table_by_column_not_contains(library):
+    table = Table(
+        [
+            {"type": "Something", "value": 1},
+            {"type": "Test", "value": 2},
+            {"type": "Whatever", "value": 3},
+            {"type": "Nothing", "value": 4},
+        ]
+    )
+    library.filter_table_by_column(table, "type", "not contains", "thing")
+    assert table.data == [["Test", 2], ["Whatever", 3]]
+
+
 def test_keyword_filter_empty_rows(library, table):
     library.filter_empty_rows(table)
     assert len(table) == 4
@@ -397,6 +410,13 @@ def test_keyword_trim_empty_rows(library, table):
 
 def test_keyword_read_table_from_csv(library):
     table = library.read_table_from_csv(RESOURCES / "easy.csv")
+    assert len(table) == 3
+    assert table.columns == ["first", "second", "third"]
+    assert table[0] == ["1", "2", "3"]
+
+
+def test_keyword_read_table_from_csv_encoding(library):
+    table = library.read_table_from_csv(RESOURCES / "easy.csv", encoding="utf-8")
     assert len(table) == 3
     assert table.columns == ["first", "second", "third"]
     assert table[0] == ["1", "2", "3"]
@@ -460,6 +480,24 @@ def test_keyword_write_table_to_csv(library, table):
 
     try:
         library.write_table_to_csv(table, path)
+        with open(path) as fd:
+            data = fd.readlines()
+    finally:
+        os.unlink(path)
+
+    assert len(data) == 7
+    assert data[0] == "one,two,three,four\n"
+
+
+def test_keyword_write_table_to_csv_encoding(library, table):
+    path = None
+    data = None
+
+    with tempfile.NamedTemporaryFile() as fd:
+        path = fd.name
+
+    try:
+        library.write_table_to_csv(table, path, encoding="utf-8")
         with open(path) as fd:
             data = fd.readlines()
     finally:

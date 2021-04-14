@@ -1362,7 +1362,35 @@ class Tables:
         """Remove all rows where the column values don't match the
         given condition.
 
+        Supported operators:
+
+        ============ ========================================
+        Operator     Description
+        ============ ========================================
+        >            Cell value is larger than
+        <            Cell value is smaller than
+        >=           Cell value is larger or equal than
+        <=           Cell value is smaller or equal than
+        ==           Cell value is equal to
+        !=           Cell value is not equal to
+        contains     Cell value contains given value
+        not contains Cell value does not contain given value
+        in           Cell value is in given value
+        not in       Cell value is not in given value
+        ============ ========================================
+
         The filtering will be done in-place.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Only accept prices that are non-zero
+            Filter table by column    ${table}   price  !=  ${0}
+
+            # Remove uwnanted product types
+            @{types}=    Create list    Unknown    Removed
+            Filter table by column    ${table}   product_type  not in  ${types}
 
         :param table:       table to filter
         :param column:      column to filter with
@@ -1380,7 +1408,9 @@ class Tables:
             "==": lambda x: x is not None and x == value,
             "!=": lambda x: x is not None and x != value,
             "contains": lambda x: x is not None and value in x,
+            "not contains": lambda x: x is not None and value not in x,
             "in": lambda x: x in value,
+            "not in": lambda x: x not in value,
         }.get(operator)
 
         if not condition:
@@ -1439,6 +1469,7 @@ class Tables:
         dialect=None,
         delimiters=None,
         column_unknown="Unknown",
+        encoding=None,
     ):
         """Read a CSV file as a table.
 
@@ -1448,6 +1479,8 @@ class Tables:
         :param dialect:         format of CSV file
         :param delimiters:      string of possible delimiters
         :param column_unknown:  column name for unknown fields
+        :param encoding:        text encoding for input file,
+                                uses system encoding by default
 
         By default attempts to deduce the CSV format and headers
         from a sample of the input file. If it's unable to determine
@@ -1479,7 +1512,7 @@ class Tables:
             Log   Found columns: ${table.columns}
         """
         sniffer = csv.Sniffer()
-        with open(path, newline="") as fd:
+        with open(path, newline="", encoding=encoding) as fd:
             sample = fd.read(1024)
 
         if dialect is None:
@@ -1508,19 +1541,23 @@ class Tables:
 
         return table
 
-    def write_table_to_csv(self, table, path, header=True, dialect="excel"):
+    def write_table_to_csv(
+        self, table, path, header=True, dialect="excel", encoding=None
+    ):
         """Write a table as a CSV file.
 
-        :param path:    path to write to
-        :param table:   table to write
-        :param header:  write columns as header to CSV file
-        :param dialect: the format of output CSV
+        :param path:     path to write to
+        :param table:    table to write
+        :param header:   write columns as header to CSV file
+        :param dialect:  the format of output CSV
+        :param encoding: text encoding for output file,
+                         uses system encoding by default
 
         Valid ``dialect`` values are ``excel``, ``excel-tab``, and ``unix``.
         """
         self._requires_table(table)
 
-        with open(path, mode="w", newline="") as fd:
+        with open(path, mode="w", newline="", encoding=encoding) as fd:
             writer = csv.DictWriter(fd, fieldnames=table.columns, dialect=dialect)
 
             if header:

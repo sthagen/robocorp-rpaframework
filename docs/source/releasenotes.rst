@@ -4,6 +4,29 @@ Release notes
 Upcoming release
 ----------------
 
+9.5.0
+-----
+
+- Library **RPA.Tables**:
+
+  - Add ``encoding`` option for CSV reading and writing
+  - Add ``not contains`` and ``not in`` operators for filtering
+
+- Library **RPA.JSON**: Add indent option to ``Save JSON To File``
+- Library **RPA.Excel.Files**: Add keyword ``Get worksheet value``
+- Library **RPA.HTTP**: Allow string as ``verify`` parameter to give path to CA_BUNDLE
+
+9.4.0
+-----
+
+- Library **RPA.PDF**: Add ``Set Convert Settings`` keyword to adjust document analysis settings from default values
+
+9.3.4
+-----
+
+- Library **RPA.PDF**: Add orientation, rotate and format image properties for ``Add Files To PDF``
+- Library **RPA.Cloud.Google**: Fix bug in create file properties and set initial mimetype correctly
+
 9.3.3
 -----
 
