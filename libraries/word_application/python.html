@@ -25,6 +25,7 @@
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
+        <script src="../../_static/iframeResizer.min.js"></script>
         <script src="../../_static/custom.js"></script>
     
     <script type="text/javascript" src="../../_static/js/theme.js"></script>
@@ -123,6 +124,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../netsuite/index.html">Netsuite</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notifier/index.html">Notifier</a></li>
@@ -311,11 +313,11 @@
 
 <dl class="method">
 <dt id="RPA.Word.Application.Application.open_file">
-<code class="sig-name descname">open_file</code><span class="sig-paren">(</span><em class="sig-param">filename: str = None</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Word.Application.Application.open_file" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">open_file</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em>, <em class="sig-param">read_only: bool = True</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Word.Application.Application.open_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Open Word document with filename.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>filename</strong> – Word document filepath, defaults to None</p>
+<dd class="field-odd"><p><strong>filename</strong> – Word document path</p>
 </dd>
 </dl>
 </dd></dl>

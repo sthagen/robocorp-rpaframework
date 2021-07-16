@@ -2,7 +2,7 @@
 Cloud.Google
 ############
 
-Use Google Cloud services.
+Library for Google Cloud services.
 
 .. toctree::
    :maxdepth: 1
@@ -19,4 +19,4 @@ Keywords
 
 .. raw:: html
 
-   <iframe scrolling="no" class="libdoc" src="../../libdoc/RPA_Cloud_Google.html"></iframe>
+   <iframe scrolling="no" id="libdoc" src="../../libdoc/RPA_Cloud_Google.html"></iframe>

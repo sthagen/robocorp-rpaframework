@@ -2,7 +2,7 @@
 Dialogs
 #######
 
-Request user input during executions.
+Display information to a user and request input.
 
 .. toctree::
    :maxdepth: 1
@@ -19,4 +19,4 @@ Keywords
 
 .. raw:: html
 
-   <iframe scrolling="no" class="libdoc" src="../../libdoc/RPA_Dialogs.html"></iframe>
+   <iframe scrolling="no" id="libdoc" src="../../libdoc/RPA_Dialogs.html"></iframe>

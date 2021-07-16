@@ -1,8 +1,246 @@
 Release notes
 =============
 
-Upcoming release
-----------------
+10.5.0
+------
+
+- Library **RPA.JavaAccessBridge**: Bump ``java-access-bridge-wrapper`` to latest version
+- Library **RPA.Database**: Add parameter ``autocommit`` to ``connect_to_database`` keyword (now only used with pymssql module)
+- Library **RPA.Email.Exchange**: Fix ``List Messages`` when ``received_by`` is missing from the email
+
+10.4.0
+------
+
+- New experimental library **RPA.JavaAccessBridge**
+
+Library requirements:
+
+- Windows only
+- Java Access Bridge is enabled
+- Environment variable pointing to the Access Bridge DLL file is set
+
+See more details in library documentation.
+
+Feedback is highly appreciated via Slack or Github issues!
+
+- Library **RPA.Email.ImapSmtp**: Allow sending message with empty account and password
+
+10.3.0
+------
+
+- Library **RPA.Database**: Return rows for ``SHOW`` and ``EXPLAIN`` statements
+- Library **RPA.Desktop.Windows**: Add ``parent`` as possible locator
+
+10.2.0
+------
+
+- Library **RPA.Excel.Application**:
+
+  - Add keyword ``Export As PDF``
+  - Add automatic document and application closing to prevent file being locked
+
+- Library **RPA.FTP**: Add keyword parameters to support FTP over TLS/SSL (FTPS)
+- Library **RPA.Desktop.Windows**: Add point of ``origin`` parameter to ``Drag and Drop``
+
+rpaframework-google: 0.2.3
+--------------------------
+
+  - Fix authentication issue when using Robocorp Vault
+  - Fix keyword ``Synthesize Speech``
+
+10.1.0
+------
+
+- Library **RPA.Excel.Files**:
+
+  - Add keyword ``Set cell format`` for adjusting cell number formatting
+  - Add new keyword aliases ``Get cell value`` and ``Set cell value``
+  - Improve keyword documentation
+
+- Library **RPA.Excel.Application**: Add option to save in legacy formats
+- Library **RPA.Desktop**: Fix issues with ``Press keys`` on Windows
+
+10.0.7
+------
+
+- Library **RPA.Dialogs**: Print full traceback from errors when opening dialog
+- Update optional ``numpy`` and ``opencv`` dependencies
+
+10.0.6
+------
+
+- Library **RPA.Dialogs**:
+
+  - Add unique name and icon for dialog window
+  - Fix MacOS keyboard focus and dock icon issues
+
+10.0.5
+------
+
+- Bump PyObjC versions from 6.x to 7.x,
+  to fix possible API version errors with MacOS
+
+10.0.4
+------
+
+- Library **RPA.Dialogs**:
+
+  - Fix automatic height calculation on Windows
+  - Fix element clearing if dialog throws exception
+  - Fix errors in keyword examples
+
+10.0.3
+------
+
+- Updated ``rpaframework-pdf`` dependency
+
+10.0.2
+------
+
+- Fix ``use-robocorp-vault`` script error when creating ``devdata/env.json`` file
+
+10.0.1
+------
+
+- Fix ``TypeError`` errors when creating Tables inside Robocorp Lab
+
+10.0.0
+------
+
+- Library **RPA.Cloud.Google**:
+
+  - Available now as ``rpaframework-google`` package instead of rpaframework extra
+  - Added basic support for ``Gmail API``
+  - Added keyword tags to identify keywords by service in the documentation
+  - Fix regression bug with Sheets keyword ``Insert Values``
+
+- Library **RPA.Dialogs**:
+
+  - Open dialogs as native OS windows instead of new browser instances
+  - Renamed multiple keywords and arguments, added type hints for all arguments
+  - Visual upgrade to all components
+  - Available separately as ``rpaframework-dialogs`` package, but still part of main release
+
+- Library **RPA.Tables**:
+
+  - Removed support for named rows, which caused confusion and had several shortcomings
+  - Added automatic argument conversion for all keywords
+  - Added examples for all keywords
+
+9.6.0
+-----
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Return file paths of saved attachments
+  - Fix problem with non-ASCII attachment filenames
+
+- Library **RPA.FileSystem**: Fix default argument handling (:issue:`170`)
+- Library **RPA.Word.Application**: Add option to control opening documents in ReadOnly mode (:issue:`171`)
+
+9.5.0
+-----
+
+- Library **RPA.Tables**:
+
+  - Add ``encoding`` option for CSV reading and writing
+  - Add ``not contains`` and ``not in`` operators for filtering
+
+- Library **RPA.JSON**: Add indent option to ``Save JSON To File``
+- Library **RPA.Excel.Files**: Add keyword ``Get worksheet value``
+- Library **RPA.HTTP**: Allow string as ``verify`` parameter to give path to CA_BUNDLE
+
+9.4.0
+-----
+
+- Library **RPA.PDF**: Add ``Set Convert Settings`` keyword to adjust document analysis settings from default values
+
+9.3.4
+-----
+
+- Library **RPA.PDF**: Add orientation, rotate and format image properties for ``Add Files To PDF``
+- Library **RPA.Cloud.Google**: Fix bug in create file properties and set initial mimetype correctly
+
+9.3.3
+-----
+
+- Library **RPA.Cloud.Google**: Fix mimetype error with ``Drive Upload File``
+
+9.3.2
+-----
+
+- Library **RPA.Email.Exchange**: Fix ``Empty Folder`` keyword
+
+9.3.1
+-----
+
+- Library **RPA.Cloud.Google**: Add missing service account support for ``Drive`` and ``Apps Script``
+
+9.3.0
+-----
+
+- Library **RPA.PDF**:
+
+  - Add keywords ``Save Figure As Image`` and ``Save Figures As Images`` to save PDF Figure objects
+  - Add keyword ``Add Files To PDF`` to combine images and/or a PDFs (or pages from PDF) to new PDF
+  - Improved performance by setting pdfminer log level to INFO
+
+- Library **RPA.Dialogs**:
+
+  - Add new keyword ``Add Password Input``, see (:pr:`161`)
+  - Logging from keyword ``Request Response`` is now suppressed in Robot Framework logs
+
+Thank you https://github.com/antusystem for submitting the pull request!
+
+9.2.1
+-----
+
+  - Library **Email.ImapSmtp**: Fix issue with saving attachments
+
+9.2.0
+-----
+
+  - Add new script **use-robocorp-vault**, which helps to setup local development run to use Robocorp Vault
+
+9.1.0
+-----
+
+- Library **RPA.PDF**:
+
+  - Restore path create feature for keyword ``HTML To PDF``
+  - Fix keyword annotation of ``Save PDF``, which caused unavailability of the keyword
+  - Update changes to this library in release notes of  ``8.0.0``
+  - Known issue about viewing PDF with form checkbox fields, see (:issue:`156`)
+
+- Library **RPA.Cloud.Google**:
+
+  - Add Sheets keyword ``Update Values``
+  - Add Sheets keyword ``Copy Sheet``
+  - Return responses from all Sheets keywords
+
+9.0.0
+-----
+
+Update to **Robot Framework 4.0**.
+
+Feature highlights:
+
+- Native IF/ELSE syntax
+- Ability to skip tasks dynamically
+- Argument auto-conversion improvements
+- Documentation generation improvements
+- Removal of task criticality
+
+To see the full list of changes see
+`the official release notes <https://github.com/robotframework/robotframework/blob/master/doc/releasenotes/rf-4.0.rst>`_.
+
+
+8.2.0
+-----
+
+- Library **RPA.Robocloud.Secrets**:
+
+  - Add keyword ``Set Secret`` for updating stored secrets
 
 8.1.0
 -----
@@ -41,6 +279,8 @@ Upcoming release
   - Rename ``PDF Decrypt`` to ``Decrypt PDF``.
   - Rename ``PDF Encrypt`` to ``Encrypt PDF``.
   - Rename ``Update Field Values`` to ``Save Field Values``.
+  - Rename ``Open PDF Document`` to ``Open PDF``.
+  - Rename ``Close PDF Document`` to ``Close PDF``.
   - Unify keyword signatures, now keywords can be given an input and output paths.
     If no input path given, the library assumes a PDF is already opened by some
     other keyword. If no output path given, the library will output the file

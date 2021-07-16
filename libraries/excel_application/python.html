@@ -25,6 +25,7 @@
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
+        <script src="../../_static/iframeResizer.min.js"></script>
         <script src="../../_static/custom.js"></script>
     
     <script type="text/javascript" src="../../_static/js/theme.js"></script>
@@ -126,6 +127,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../netsuite/index.html">Netsuite</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../notifier/index.html">Notifier</a></li>
@@ -220,7 +222,7 @@
 <span id="excel-application"></span><h2>Excel.Application<a class="headerlink" href="#module-RPA.Excel.Application" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="RPA.Excel.Application.Application">
-<em class="property">class </em><code class="sig-prename descclassname">RPA.Excel.Application.</code><code class="sig-name descname">Application</code><a class="headerlink" href="#RPA.Excel.Application.Application" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">RPA.Excel.Application.</code><code class="sig-name descname">Application</code><span class="sig-paren">(</span><em class="sig-param">autoexit: bool = True</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Excel.Application.Application" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p><cite>Excel.Application</cite> is a library for controlling an Excel application.</p>
 <p><strong>Examples</strong></p>
@@ -242,6 +244,10 @@
 <span class="gu">Run Excel Macro</span><span class="p"></span>
 <span class="p">    </span><span class="nf">Open Workbook</span><span class="p">   </span><span class="s">orders_with_macro.xlsm</span><span class="p"></span>
 <span class="p">    </span><span class="nf">Run Macro</span><span class="p">       </span><span class="s">Sheet1.CommandButton1_Click</span><span class="p"></span>
+
+<span class="gu">Export Workbook as PDF</span><span class="p"></span>
+<span class="p">    </span><span class="nf">Open Workbook</span><span class="p">           </span><span class="s">workbook.xlsx</span><span class="p"></span>
+<span class="p">    </span><span class="nf">Export as PDF</span><span class="p">           </span><span class="s">workbook.pdf</span><span class="p"></span>
 </pre></div>
 </div>
 <p><strong>Python</strong></p>
@@ -297,6 +303,22 @@ it does not exist.</p>
 <dt id="RPA.Excel.Application.Application.close_document">
 <code class="sig-name descname">close_document</code><span class="sig-paren">(</span><em class="sig-param">save_changes: bool = False</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Excel.Application.Application.close_document" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close the active document (if open).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="RPA.Excel.Application.Application.export_as_pdf">
+<code class="sig-name descname">export_as_pdf</code><span class="sig-paren">(</span><em class="sig-param">pdf_filename: str</em>, <em class="sig-param">excel_filename: str = None</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Excel.Application.Application.export_as_pdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Export Excel as PDF file</p>
+<p>If Excel filename is not given, the currently open workbook
+will be exported as PDF.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pdf_filename</strong> – PDF filename to save</p></li>
+<li><p><strong>excel_filename</strong> – Excel filename to open</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
@@ -408,16 +430,29 @@ it does not exist.</p>
 
 <dl class="method">
 <dt id="RPA.Excel.Application.Application.save_excel_as">
-<code class="sig-name descname">save_excel_as</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em>, <em class="sig-param">autofit: bool = False</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Excel.Application.Application.save_excel_as" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">save_excel_as</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em>, <em class="sig-param">autofit: bool = False</em>, <em class="sig-param">file_format=None</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Excel.Application.Application.save_excel_as" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save Excel with name if workbook is open</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>filename</strong> – where to save file</p></li>
 <li><p><strong>autofit</strong> – autofit cell widths if True, defaults to False</p></li>
+<li><p><strong>file_format</strong> – format of file</p></li>
 </ul>
 </dd>
 </dl>
+<p><strong>Note:</strong> Changing the file extension for the path does not
+affect the actual format. To use an older format, use
+the <code class="docutils literal notranslate"><span class="pre">file_format</span></code> argument with one of the following values:</p>
+<p><a class="reference external" href="https://docs.microsoft.com/en-us/office/vba/api/excel.xlfileformat">https://docs.microsoft.com/en-us/office/vba/api/excel.xlfileformat</a></p>
+<p>Examples:</p>
+<div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Save workbook in modern format</span>
+<span class="c">Save excel as</span><span class="p">    </span><span class="c">orders.xlsx</span><span class="p"></span>
+
+<span class="c"># Save workbook in Excel 97 format (format from above URL)</span>
+<span class="c">Save excel as</span><span class="p">    </span><span class="c">legacy.xls</span><span class="p">   </span><span class="c">file_format=${56}</span><span class="p"></span>
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="method">
