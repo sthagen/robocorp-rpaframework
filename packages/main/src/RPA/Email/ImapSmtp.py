@@ -1,3 +1,4 @@
+import base64
 from enum import Enum
 from functools import wraps
 
@@ -24,7 +25,7 @@ from imaplib import IMAP4_SSL
 from smtplib import SMTP, SMTP_SSL, ssl
 from smtplib import SMTPConnectError, SMTPNotSupportedError, SMTPServerDisconnected
 
-from typing import Any
+from typing import Any, Union
 
 from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
 from RPA.RobotLogListener import RobotLogListener
@@ -218,10 +219,9 @@ class ImapSmtp:
             Set Credentials   ${username}   ${password}
             Authorize
         """
-        if account:
-            self.account = account
-        if password:
-            self.password = password
+
+        self.account = account
+        self.password = password
 
     def authorize_smtp(
         self,
@@ -247,16 +247,11 @@ class ImapSmtp:
 
             Authorize SMTP    ${username}   ${password}  smtp.gmail.com  587
         """
-        if account is None and password is None:
-            account = self.account
-            password = self.password
-        if smtp_server is None:
-            smtp_server = self.smtp_server
-        if smtp_port is None:
-            smtp_port = self.smtp_port
-        else:
-            smtp_port = int(smtp_port)
-        if smtp_server and account and password:
+        account = account or self.account
+        password = password or self.password
+        smtp_server = smtp_server or self.smtp_server
+        smtp_port = smtp_port or self.smtp_port
+        if smtp_server:
             try:
                 self.smtp_conn = SMTP(smtp_server, smtp_port)
                 self.send_smtp_hello()
@@ -267,12 +262,10 @@ class ImapSmtp:
             except SMTPConnectError:
                 context = ssl.create_default_context()
                 self.smtp_conn = SMTP_SSL(smtp_server, smtp_port, context=context)
-            self.smtp_conn.login(account, password)
+            if account and password:
+                self.smtp_conn.login(account, password)
         else:
-            self.logger.warning(
-                "Server address, account and password are needed for "
-                "authentication with SMTP"
-            )
+            self.logger.warning("SMTP server address is needed for authentication")
         if self.smtp_conn is None:
             self.logger.warning("Not able to establish SMTP connection")
 
@@ -360,7 +353,6 @@ class ImapSmtp:
         if self.smtp_conn:
             self.smtp_conn.ehlo()
 
-    @smtp_connection
     def send_message(
         self,
         sender: str,
@@ -438,6 +430,8 @@ class ImapSmtp:
         g.flatten(msg)
 
         try:
+            if self.smtp_conn is None:
+                self.authorize_smtp()
             self.smtp_conn.sendmail(sender, recipients, str_io.getvalue())
         except Exception as err:
             raise ValueError(f"Send Message failed: {err}") from err
@@ -782,12 +776,14 @@ class ImapSmtp:
         attachments_saved = []
         messages = self.list_messages(criterion)
         for msg in messages:
-            attachments_saved.append(
+            attachments_saved.extend(
                 self.save_attachment(msg, target_folder, overwrite)
             )
-        return attachments_saved if len(attachments_saved) > 0 else False
+        return attachments_saved
 
-    def save_attachment(self, message, target_folder, overwrite):
+    def save_attachment(
+        self, message: Union[dict, Message], target_folder: str, overwrite: bool
+    ):
         # pylint: disable=C0301
         """Save mail attachment into local folder
 
@@ -808,7 +804,7 @@ class ImapSmtp:
         """  # noqa: E501
         if target_folder is None:
             target_folder = os.path.expanduser("~")
-        self._save_attachment(message, target_folder, overwrite)
+        return self._save_attachment(message, target_folder, overwrite)
 
     def _save_attachment(self, message, target_folder, overwrite):
         attachments_saved = []
@@ -817,9 +813,16 @@ class ImapSmtp:
             content_maintype = part.get_content_maintype()
             content_disposition = part.get("Content-Disposition")
             if content_maintype != "multipart" and content_disposition is not None:
-                filename = Path(part.get_filename()).name
-                if bool(filename):
-                    filepath = Path(target_folder) / filename
+                filename = part.get_filename()
+                if filename:
+                    transfer_encoding = part.get_all("Content-Transfer-Encoding")
+                    if transfer_encoding and transfer_encoding[0] == "base64":
+                        filename_parts = filename.split("?")
+                        if len(filename_parts) > 1:
+                            filename = base64.b64decode(filename_parts[3]).decode(
+                                filename_parts[1]
+                            )
+                    filepath = Path(target_folder) / Path(filename).name
                     if not filepath.exists() or overwrite:
                         self.logger.info(
                             "Saving attachment: %s",
@@ -827,9 +830,10 @@ class ImapSmtp:
                         )
                         with open(filepath, "wb") as f:
                             f.write(part.get_payload(decode=True))
-                            attachments_saved.append(filepath)
+                            attachments_saved.append(str(filepath))
                     elif filepath.exists() and not overwrite:
                         self.logger.warning("Did not overwrite file: %s", filepath)
+        return attachments_saved
 
     def _save_eml_file(self, message, target_folder, overwrite):
         emlfile = Path(target_folder) / f"{message['Mail-Id']}.eml"

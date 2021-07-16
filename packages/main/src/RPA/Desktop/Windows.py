@@ -69,6 +69,7 @@ WINDOWS_LOCATOR_STRATEGIES = {
     "id": "automation_id",
     "partial name": "partial name",
     "regexp": "regexp",
+    "parent": "parent",
 }
 
 
@@ -749,6 +750,7 @@ class Windows(OperatingSystem):
         self.dlg.set_focus()
         params = None
         if existing_app:
+            # pylint: disable=consider-using-dict-items
             for key in self._apps:
                 if self._apps[key]["handle"] == handle:
                     app_instance = key
@@ -901,6 +903,9 @@ class Windows(OperatingSystem):
                 "".join(ctrl.children_texts())
                 if hasattr(ctrl, "children_texts")
                 else None
+            )
+            element_text["rich_text"] = (
+                elements[0]["rich_text"] if "rich_text" in elements[0].keys() else ""
             )
             legacy = (
                 ctrl.legacy_properties() if hasattr(ctrl, "legacy_properties") else None
@@ -1645,7 +1650,7 @@ class Windows(OperatingSystem):
             "iter_children",
             "iter_descendants",
             # "name",
-            "parent",
+            # "parent",
             # "process_id",
             # "rectangle",
             # "rich_text",
@@ -1662,9 +1667,12 @@ class Windows(OperatingSystem):
         for attr in element_attributes:
             try:
                 attr_value = getattr(element_info, attr)
-                element_dict[attr] = (
-                    attr_value() if callable(attr_value) else str(attr_value)
-                )
+                if attr == "parent":
+                    element_dict["parent"] = attr_value.control_type
+                else:
+                    element_dict[attr] = (
+                        attr_value() if callable(attr_value) else str(attr_value)
+                    )
             except TypeError:
                 pass
             except COMError as ce:
@@ -1679,6 +1687,17 @@ class Windows(OperatingSystem):
             else None
         )
         element_dict["object"] = element
+        # child_id = (
+        #     f"[{element_dict['legacy']['ChildId']}]"
+        #     if (element_dict["legacy"] and element_dict["legacy"]["ChildId"] > 0)
+        #     else ""
+        # )
+        # element_dict[
+        #     "xpath"
+        # ] = f"/{element_dict['parent']}/{element_dict['control_type']}{child_id}"
+        # if "Window" not in element_dict["xpath"]:
+        #     element_dict["xpath"] = f"/Window{element_dict['xpath']}"
+
         return element_dict
 
     def put_system_to_sleep(self) -> None:
@@ -1743,15 +1762,13 @@ class Windows(OperatingSystem):
             target_elements, _ = self.find_element(target_locator)
             if len(target_elements) == 0:
                 raise ValueError(
-                    ("Target element was not found by locator '%s'", target_locator)
+                    ("Target element was not found by locator '%s'" % target_locator)
                 )
             elif len(target_elements) > 1:
                 raise ValueError(
                     (
                         "Target element matched more than 1 element (%d) "
-                        "by locator '%s'",
-                        len(target_elements),
-                        target_locator,
+                        "by locator '%s'" % (len(target_elements), target_locator)
                     )
                 )
             target_x, target_y = self.calculate_rectangle_center(
@@ -1763,7 +1780,9 @@ class Windows(OperatingSystem):
             )
         return target_x, target_y
 
-    def _select_elements_for_drag(self, src: dict, src_locator: str) -> Any:
+    def _select_elements_for_drag(
+        self, src: dict, src_locator: str, origin="middle"
+    ) -> Any:
         self.switch_to_application(src["id"])
         source_elements, _ = self.find_element(src_locator)
         if len(source_elements) == 0:
@@ -1787,7 +1806,10 @@ class Windows(OperatingSystem):
                 source_max_bottom = bottom
             mid_x = int((right - left) / 2) + left
             mid_y = int((bottom - top) / 2) + top
-            selections.append((mid_x, mid_y))
+            if origin == "middle":
+                selections.append((mid_x, mid_y))
+            elif origin == "topleft":
+                selections.append((left, top))
         source_x = int((source_max_right - source_min_left) / 2) + source_min_left
         source_y = int((source_max_bottom - source_min_top) / 2) + source_min_top
         return selections, source_x, source_y
@@ -1800,6 +1822,7 @@ class Windows(OperatingSystem):
         target_locator: str = None,
         handle_ctrl_key: bool = False,
         drop_delay: float = 2.0,
+        origin: str = "middle",
     ) -> None:
         # pylint: disable=C0301
         """Drag elements from source and drop them on target.
@@ -1834,7 +1857,7 @@ class Windows(OperatingSystem):
 
         single_application = src["app"] == target["app"]
         selections, source_x, source_y = self._select_elements_for_drag(
-            src, src_locator
+            src, src_locator, origin
         )
         target_x, target_y = self._validate_target(target, target_locator)
 

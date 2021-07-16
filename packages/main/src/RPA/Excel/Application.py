@@ -1,3 +1,4 @@
+import atexit
 import logging
 import platform
 import struct
@@ -62,6 +63,10 @@ class Application:
             Open Workbook   orders_with_macro.xlsm
             Run Macro       Sheet1.CommandButton1_Click
 
+        Export Workbook as PDF
+            Open Workbook           workbook.xlsx
+            Export as PDF           workbook.pdf
+
     **Python**
 
     .. code-block:: python
@@ -81,7 +86,7 @@ class Application:
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_DOC_FORMAT = "REST"
 
-    def __init__(self) -> None:
+    def __init__(self, autoexit: bool = True) -> None:
         self.logger = logging.getLogger(__name__)
         self.app = None
         self.workbook = None
@@ -91,6 +96,8 @@ class Application:
             self.logger.warning(
                 "Excel application library requires Windows dependencies to work."
             )
+        if autoexit:
+            atexit.register(self.quit_application)
 
     def open_application(
         self, visible: bool = False, display_alerts: bool = False
@@ -323,11 +330,30 @@ class Application:
         with catch_com_error():
             self.workbook.Save()
 
-    def save_excel_as(self, filename: str, autofit: bool = False) -> None:
+    def save_excel_as(
+        self, filename: str, autofit: bool = False, file_format=None
+    ) -> None:
         """Save Excel with name if workbook is open
 
         :param filename: where to save file
         :param autofit: autofit cell widths if True, defaults to False
+        :param file_format: format of file
+
+        **Note:** Changing the file extension for the path does not
+        affect the actual format. To use an older format, use
+        the ``file_format`` argument with one of the following values:
+
+        https://docs.microsoft.com/en-us/office/vba/api/excel.xlfileformat
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Save workbook in modern format
+            Save excel as    orders.xlsx
+
+            # Save workbook in Excel 97 format (format from above URL)
+            Save excel as    legacy.xls   file_format=${56}
         """
         if not self.workbook:
             # Doesn't raise error for backwards compatibility
@@ -340,7 +366,11 @@ class Application:
                 self.worksheet.Columns.AutoFit()
 
             path = str(Path(filename).resolve())
-            self.workbook.SaveAs(path)
+
+            if file_format is not None:
+                self.workbook.SaveAs(path, FileFormat=file_format)
+            else:
+                self.workbook.SaveAs(path)
 
     def run_macro(self, macro_name: str, *args: Any):
         """Run Excel macro with given name
@@ -356,3 +386,21 @@ class Application:
 
         with catch_com_error():
             self.app.Application.Run(f"{self.workbook.Name}!{macro_name}", *args)
+
+    def export_as_pdf(self, pdf_filename: str, excel_filename: str = None):
+        """Export Excel as PDF file
+
+        If Excel filename is not given, the currently open workbook
+        will be exported as PDF.
+
+        :param pdf_filename: PDF filename to save
+        :param excel_filename: Excel filename to open
+        """
+        if excel_filename:
+            self.open_workbook(excel_filename)
+        else:
+            if not self.workbook:
+                raise ValueError("No workbook open. Can't export PDF.")
+        with catch_com_error():
+            path = str(Path(pdf_filename).resolve())
+            self.workbook.ExportAsFixedFormat(0, path)

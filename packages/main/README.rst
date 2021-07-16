@@ -48,11 +48,33 @@ Links
 
 .. image:: https://img.shields.io/pypi/v/rpaframework.svg?label=version
    :target: https://pypi.python.org/pypi/rpaframework
-   :alt: Latest version
+   :alt: rpaframework latest version
 
 .. image:: https://img.shields.io/pypi/l/rpaframework.svg
    :target: http://www.apache.org/licenses/LICENSE-2.0.html
    :alt: License
+
+------------
+
+.. image:: https://img.shields.io/pypi/v/rpaframework-dialogs.svg?label=rpaframework-dialogs
+   :target: https://pypi.python.org/pypi/rpaframework-dialogs
+   :alt: rpaframework-dialogs latest version
+
+.. image:: https://img.shields.io/pypi/v/rpaframework-google.svg?label=rpaframework-google
+   :target: https://pypi.python.org/pypi/rpaframework-google
+   :alt: rpaframework-google latest version
+
+.. image:: https://img.shields.io/pypi/v/rpaframework-pdf.svg?label=rpaframework-pdf
+   :target: https://pypi.python.org/pypi/rpaframework-pdf
+   :alt: rpaframework-pdf latest version
+
+.. image:: https://img.shields.io/pypi/v/rpaframework-recognition.svg?label=rpaframework-recognition
+   :target: https://pypi.python.org/pypi/rpaframework-recognition
+   :alt: rpaframework-recognition latest version
+
+.. image:: https://img.shields.io/pypi/v/rpaframework-core.svg?label=rpaframework-core
+   :target: https://pypi.python.org/pypi/rpaframework-core
+   :alt: rpaframework-core latest version
 
 Libraries
 ---------
@@ -102,6 +124,8 @@ The RPA Framework project currently includes the following libraries:
 +----------------------------+----------------------------------------------+
 | `Images`_                  | Manipulate images                            |
 +----------------------------+----------------------------------------------+
+| `JavaAccessBridge`_        | Control Java applications                    |
++----------------------------+----------------------------------------------+
 | `JSON`_                    | Manipulate JSON objects                      |
 +----------------------------+----------------------------------------------+
 | `Notifier`_                | Notify messages using different services     |
@@ -148,6 +172,7 @@ The RPA Framework project currently includes the following libraries:
 .. _FTP: https://rpaframework.org/libraries/ftp/
 .. _HTTP: https://rpaframework.org/libraries/http/
 .. _Images: https://rpaframework.org/libraries/images/
+.. _JavaAccessBridge: https://rpaframework.org/libraries/javaaccessbridge/
 .. _JSON: https://rpaframework.org/libraries/json/
 .. _Notifier: https://rpaframework.org/libraries/notifier/
 .. _Outlook.Application: https://rpaframework.org/libraries/outlook_application/
@@ -167,11 +192,24 @@ Installation
 If you already have Python_ and `pip <http://pip-installer.org>`_ installed,
 you can use:
 
-``pip install rpaframework``
+.. code-block:: console
+
+    pip install rpaframework
 
 To install all extra packages, you can use:
 
-``pip install rpaframework[aws,cv,google]``
+.. code-block:: console
+
+    pip install rpaframework[aws,cv]
+
+Other packages that can be installed separately are:
+
+.. code-block:: console
+
+    pip install rpaframework-dialogs  # included in the rpaframework by default
+    pip install rpaframework-google
+    pip install rpaframework-pdf  # included in the rpaframework by default
+    pip install rpaframework-recognition
 
 .. note:: Python 3.6 or higher is required
 

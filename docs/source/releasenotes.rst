@@ -1,8 +1,142 @@
 Release notes
 =============
 
-Upcoming release
-----------------
+10.5.0
+------
+
+- Library **RPA.JavaAccessBridge**: Bump ``java-access-bridge-wrapper`` to latest version
+- Library **RPA.Database**: Add parameter ``autocommit`` to ``connect_to_database`` keyword (now only used with pymssql module)
+- Library **RPA.Email.Exchange**: Fix ``List Messages`` when ``received_by`` is missing from the email
+
+10.4.0
+------
+
+- New experimental library **RPA.JavaAccessBridge**
+
+Library requirements:
+
+- Windows only
+- Java Access Bridge is enabled
+- Environment variable pointing to the Access Bridge DLL file is set
+
+See more details in library documentation.
+
+Feedback is highly appreciated via Slack or Github issues!
+
+- Library **RPA.Email.ImapSmtp**: Allow sending message with empty account and password
+
+10.3.0
+------
+
+- Library **RPA.Database**: Return rows for ``SHOW`` and ``EXPLAIN`` statements
+- Library **RPA.Desktop.Windows**: Add ``parent`` as possible locator
+
+10.2.0
+------
+
+- Library **RPA.Excel.Application**:
+
+  - Add keyword ``Export As PDF``
+  - Add automatic document and application closing to prevent file being locked
+
+- Library **RPA.FTP**: Add keyword parameters to support FTP over TLS/SSL (FTPS)
+- Library **RPA.Desktop.Windows**: Add point of ``origin`` parameter to ``Drag and Drop``
+
+rpaframework-google: 0.2.3
+--------------------------
+
+  - Fix authentication issue when using Robocorp Vault
+  - Fix keyword ``Synthesize Speech``
+
+10.1.0
+------
+
+- Library **RPA.Excel.Files**:
+
+  - Add keyword ``Set cell format`` for adjusting cell number formatting
+  - Add new keyword aliases ``Get cell value`` and ``Set cell value``
+  - Improve keyword documentation
+
+- Library **RPA.Excel.Application**: Add option to save in legacy formats
+- Library **RPA.Desktop**: Fix issues with ``Press keys`` on Windows
+
+10.0.7
+------
+
+- Library **RPA.Dialogs**: Print full traceback from errors when opening dialog
+- Update optional ``numpy`` and ``opencv`` dependencies
+
+10.0.6
+------
+
+- Library **RPA.Dialogs**:
+
+  - Add unique name and icon for dialog window
+  - Fix MacOS keyboard focus and dock icon issues
+
+10.0.5
+------
+
+- Bump PyObjC versions from 6.x to 7.x,
+  to fix possible API version errors with MacOS
+
+10.0.4
+------
+
+- Library **RPA.Dialogs**:
+
+  - Fix automatic height calculation on Windows
+  - Fix element clearing if dialog throws exception
+  - Fix errors in keyword examples
+
+10.0.3
+------
+
+- Updated ``rpaframework-pdf`` dependency
+
+10.0.2
+------
+
+- Fix ``use-robocorp-vault`` script error when creating ``devdata/env.json`` file
+
+10.0.1
+------
+
+- Fix ``TypeError`` errors when creating Tables inside Robocorp Lab
+
+10.0.0
+------
+
+- Library **RPA.Cloud.Google**:
+
+  - Available now as ``rpaframework-google`` package instead of rpaframework extra
+  - Added basic support for ``Gmail API``
+  - Added keyword tags to identify keywords by service in the documentation
+  - Fix regression bug with Sheets keyword ``Insert Values``
+
+- Library **RPA.Dialogs**:
+
+  - Open dialogs as native OS windows instead of new browser instances
+  - Renamed multiple keywords and arguments, added type hints for all arguments
+  - Visual upgrade to all components
+  - Available separately as ``rpaframework-dialogs`` package, but still part of main release
+
+- Library **RPA.Tables**:
+
+  - Removed support for named rows, which caused confusion and had several shortcomings
+  - Added automatic argument conversion for all keywords
+  - Added examples for all keywords
+
+9.6.0
+-----
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Return file paths of saved attachments
+  - Fix problem with non-ASCII attachment filenames
+
+- Library **RPA.FileSystem**: Fix default argument handling (:issue:`170`)
+- Library **RPA.Word.Application**: Add option to control opening documents in ReadOnly mode (:issue:`171`)
 
 9.5.0
 -----

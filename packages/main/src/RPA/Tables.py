@@ -1,27 +1,41 @@
 # pylint: disable=too-many-lines
-# TODO: Distinguish between range-based index and named index
-# TODO: Integers as column names? Columns forced to strings?
 # TODO: Implement column slicing
-# TODO: Index accessing through dot notation?
 # TODO: Index name conflict in exports/imports
 # TODO: Return Robot Framework DotDict instead of dict?
 import copy
 import csv
-import keyword
 import logging
 import re
 from collections import OrderedDict, namedtuple
-from typing import List, Union, NamedTuple, Dict
+from enum import Enum
+from keyword import iskeyword
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from itertools import groupby, zip_longest
 from numbers import Number
 from operator import itemgetter
 
+from robot.api.deco import keyword
 from RPA.core.types import is_dict_like, is_list_like, is_namedtuple
 from RPA.core.notebook import notebook_table, notebook_print
 
+Index = int
+Column = Union[int, str]
+Row = Union[Dict, List, Tuple, NamedTuple, set]
+Data = Union[Dict[Column, Row], List[Row], "Table", None]
 
-def to_list(obj, size=1):
+
+def to_list(obj: Any, size: int = 1):
     """Convert (possibly scalar) value to list of `size`."""
     if not is_list_like(obj):
         return [obj] * int(size)
@@ -29,7 +43,7 @@ def to_list(obj, size=1):
         return obj
 
 
-def to_identifier(val):
+def to_identifier(val: Any):
     """Convert string to valid identifier"""
     val = str(val).strip()
     # Replaces spaces, dashes, and slashes to underscores
@@ -39,18 +53,42 @@ def to_identifier(val):
     # Identifier can't start with digits
     val = re.sub(r"^[^a-zA-Z_]+", "", val)
 
-    if not val or keyword.iskeyword(val):
+    if not val or iskeyword(val):
         raise ValueError(f"Unable to convert to identifier: {val}")
 
     return val
 
 
-def if_none(value, default):
+def to_condition(operator: str, value: Any):
+    """Convert string operator into callable condition function."""
+    operator = str(operator).lower().strip()
+    condition = {
+        ">": lambda x: x is not None and x > value,
+        "<": lambda x: x is not None and x < value,
+        ">=": lambda x: x is not None and x >= value,
+        "<=": lambda x: x is not None and x <= value,
+        "==": lambda x: x == value,
+        "!=": lambda x: x != value,
+        "is": lambda x: x is value,
+        "not is": lambda x: x is not value,
+        "contains": lambda x: x is not None and value in x,
+        "not contains": lambda x: x is not None and value not in x,
+        "in": lambda x: x in value,
+        "not in": lambda x: x not in value,
+    }.get(operator)
+
+    if not condition:
+        raise ValueError(f"Unknown operator: {operator}")
+
+    return condition
+
+
+def if_none(value: Any, default: Any):
     """Return default if value is None."""
     return value if value is not None else default
 
 
-def uniq(seq):
+def uniq(seq: Iterable):
     """Return list of unique values while preserving order.
     Values must be hashable.
     """
@@ -63,14 +101,12 @@ def uniq(seq):
     return result
 
 
-Row = Union[NamedTuple, dict, list, tuple]
-Tableable = Union[
-    None,
-    List[Row],
-    Dict[str, Row],
-    "Table",
-    str,  # If it's a list or dict -like string from Robot we will auto convert it
-]
+class Dialect(Enum):
+    """CSV dialect"""
+
+    Excel = "excel"
+    ExcelTab = "excel-tab"
+    Unix = "unix"
 
 
 class Table:
@@ -85,21 +121,17 @@ class Table:
 
     Row: a namedtuple, dictionary, list or a tuple
 
-    :param data:     values for table,  see "Supported data formats"
-    :param columns:  names for columns, should match data dimensions
-    :param index:    names for rows,    should match data dimensions
+    :param data:     Values for table,  see "Supported data formats"
+    :param columns:  Names for columns, should match data dimensions
     """
 
-    def __init__(self, data: Tableable = None, columns=None, index=None):
+    def __init__(self, data: Data = None, columns: Optional[List[str]] = None):
         self._data = []
         self._columns = []
-        self._index = []
 
-        # Use public setters to validate data
+        # Use public setter to validate data
         if columns is not None:
             self.columns = list(columns)
-        if index is not None:
-            self.index = list(index)
 
         if not data:
             self._init_empty()
@@ -119,29 +151,28 @@ class Table:
 
     def _init_empty(self):
         """Initialize table with empty data."""
-        self._data = [[None for _ in self._columns] for _ in self._index]
+        self._data = []
 
-    def _init_table(self, table):
+    def _init_table(self, table: "Table"):
         """Initialize table with another table."""
         if not self.columns:
             self.columns = table.columns
-        if not self.index:
-            self.index = table.index
         self._data = table.data
 
-    def _init_list(self, data):
+    def _init_list(self, data: List[Any]):
         """Initialize table from list-like container."""
-        # Assume data is homogenous in regard to type
+        # Assume data is homogenous in regard to row type
         obj = data[0]
         column_names = self._column_name_getter(obj)
         column_values = self._column_value_getter(obj)
+
+        # Map of source to destination column
         column_map = {}
 
-        # Do not update columns or index if predefined
+        # Do not update columns if predefined
         add_columns = not bool(self._columns)
-        add_index = not bool(self._index)
 
-        for idx, obj in enumerate(data):
+        for obj in data:
             row = [None] * len(self._columns)
 
             for column_src in column_names(obj):
@@ -154,8 +185,9 @@ class Table:
                     if not add_columns:
                         continue
 
-                    # Store map of source column name to created name
                     col = self._add_column(column_dst)
+
+                    # Store map of source column name to created name
                     column_dst = self._columns[col]
                     column_map[column_src] = column_dst
 
@@ -167,11 +199,7 @@ class Table:
 
             self._data.append(row)
 
-            # Generate range-based index if not predefined
-            if add_index:
-                self._index.append(idx)
-
-    def _init_dict(self, data):
+    def _init_dict(self, data: Dict[Column, Row]):
         """Initialize table from dict-like container."""
         if not self._columns:
             self._columns = list(data.keys())
@@ -186,33 +214,35 @@ class Table:
         # Convert columns to rows
         self._data = [list(row) for row in zip_longest(*columns)]
 
-        self._index = self._index or list(range(len(self._data)))
-
     def __repr__(self):
-        return "Table(columns={}, rows={})".format(self.columns, len(self))
+        return "Table(columns={}, rows={})".format(self.columns, self.size)
 
     def __len__(self):
-        return len(self._index)
+        return self.size
 
     def __iter__(self):
         return self.iter_dicts(with_index=False)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
         if not isinstance(other, Table):
-            return NotImplemented
-        return (
-            self._index == other._index
-            and self._columns == other._columns
-            and self._data == other._data
-        )
+            return False
+        return self._columns == other._columns and self._data == other._data
 
     @property
     def data(self):
         return self._data.copy()
 
     @property
+    def size(self):
+        return len(self._data)
+
+    @property
     def dimensions(self):
-        return len(self._index), len(self._columns)
+        return self.size, len(self._columns)
+
+    @property
+    def index(self):
+        return list(range(self.size))
 
     @property
     def columns(self):
@@ -256,7 +286,9 @@ class Table:
                 count = len(obj)
                 if predefined:
                     if count > len(predefined):
-                        raise ValueError(f"Data had more than defined {count} columns")
+                        raise ValueError(
+                            f"Data had more than defined {len(predefined)} columns"
+                        )
                     return predefined[:count]
                 else:
                     return list(range(count))
@@ -308,77 +340,74 @@ class Table:
         self._columns = [self._columns[col] for col in cols]
         self._data = [[row[col] for col in cols] for row in self._data]
 
-    @property
-    def index(self):
-        return self._index.copy()
-
-    @index.setter
-    def index(self, names):
-        """Renames index with given values."""
-        self._validate_index(names)
-        self._index = list(names)
-
-    def _validate_index(self, names):
-        """Validate that given index names can be used."""
-        if not is_list_like(names):
-            raise ValueError("Index should be list-like")
-
-        if len(set(names)) != len(names):
-            raise ValueError("Duplicate index names")
-
-        if self._data and len(names) != len(self._data):
-            raise ValueError("Invalid index length")
-
     def _validate_self(self):
         """Validate that internal data is valid and coherent."""
         self._validate_columns(self._columns)
-        self._validate_index(self._index)
 
         if self._data:
             head = self._data[0]
             if len(head) != len(self._columns):
                 raise ValueError("Columns length does not match data")
 
-        if len(self._data) != len(self._index):
-            raise ValueError("Index length does not match data")
+    def index_location(self, value):
+        try:
+            value = int(value)
+        except ValueError as err:
+            raise ValueError(f"Index is not a number: {value}") from err
+
+        if value < 0:
+            value += self.size
+
+        if self.size == 0:
+            raise IndexError("No rows in table")
+
+        if (value < 0) or (value >= self.size):
+            raise IndexError(f"Index ({value}) out of range (0..{self.size - 1})")
+
+        return value
 
     def column_location(self, value):
-        return self._location("column", self._columns, value)
+        """Find location for column value."""
 
-    def index_location(self, value):
-        return self._location("index", self._index, value)
+        # Try to use as-is
+        try:
+            return self._columns.index(value)
+        except ValueError:
+            pass
 
-    @staticmethod
-    def _location(name, container, value):
-        """Find location for index/column value."""
-        # Directly indexing columns
-        if isinstance(value, int):
-            if value in container:
-                location = container.index(value)
+        # Try as integer index
+        try:
+            value = int(value)
+
+            if value in self._columns:
+                location = self._columns.index(value)
             elif value < 0:
-                location = value + len(container)
+                location = value + len(self._columns)
             else:
                 location = value
 
-            if location >= len(container):
-                raise IndexError(f"{name.title()} out of of range")
+            size = len(self._columns)
+            if size == 0:
+                raise IndexError("No columns in table")
 
-        # Finding index by name
-        else:
-            try:
-                location = container.index(value)
-            except ValueError as e:
-                raise ValueError(f"Unknown {name} name: {value}") from e
+            if location >= size:
+                raise IndexError(f"Column ({location}) out of range (0..{size - 1})")
 
-        return location
+            return location
+        except ValueError:
+            pass
+
+        # No matches
+        options = ", ".join(str(col) for col in self._columns)
+        raise ValueError(f"Unknown column name: {value}, current columns: {options}")
 
     def __getitem__(self, key):
         """Helper method for accessing items in the Table.
 
         Examples:
-            table[:10]              First 10 rows
-            table[0,1]              Value in first row and second column
-            table[2:10,"email"]     Values in "email" column for rows 3 to 11
+            table[:10]           First 10 rows
+            table[0,1]           Value in first row and second column
+            table[2:10,"email"]  Values in "email" column for rows 3 to 11
         """
         # Both row index and columns given
         if isinstance(key, tuple):
@@ -413,24 +442,24 @@ class Table:
 
     def _slice_index(self, slicer):
         """Create list of index values from slice object."""
-        if slicer.start is None:
+        if slicer.start is not None:
+            start = slicer.start
+        else:
             start = 0
-        else:
-            try:
-                start = self.index_location(slicer.start)
-            except ValueError as e:
-                raise IndexError("Start of slice not in index") from e
 
-        if slicer.stop is None:
-            end = len(self._index)
+        if slicer.stop is not None:
+            end = slicer.stop
         else:
-            try:
-                end = self.index_location(slicer.stop)
-            except ValueError as e:
-                raise IndexError("End of slice not in index") from e
+            end = self.size
 
-        if start > end:
-            raise IndexError("Start of slice after end of slice")
+        if not isinstance(start, int) or not isinstance(end, int):
+            raise IndexError("Index slices should be integers")
+
+        if start < 0:
+            start = self.size + start
+
+        if end < 0:
+            end = self.size + end
 
         return list(range(start, end))
 
@@ -440,16 +469,16 @@ class Table:
 
     def clear(self):
         """Remove all rows from this table."""
-        self.delete_rows(self.index)
+        self._data = []
 
     def head(self, rows, as_list=False):
         """Return first n rows of table."""
-        indexes = self._index[: int(rows)]
+        indexes = self.index[: int(rows)]
         return self.get_table(indexes, as_list=as_list)
 
     def tail(self, rows, as_list=False):
         """Return last n rows of table."""
-        indexes = self._index[-int(rows) :]
+        indexes = self.index[-int(rows) :]
         return self.get_table(indexes, as_list=as_list)
 
     def get(self, indexes=None, columns=None, as_list=False):
@@ -464,10 +493,10 @@ class Table:
         If both `indexes` and `columns` are lists:
             Returns a new Table instance with matching cell values
 
-        :param indexes: list of indexes, or all if not given
-        :param columns: list of columns, or all if not given
+        :param indexes: List of indexes, or all if not given
+        :param columns: List of columns, or all if not given
         """
-        indexes = if_none(indexes, self._index)
+        indexes = if_none(indexes, self.index)
         columns = if_none(columns, self._columns)
 
         if is_list_like(indexes) and is_list_like(columns):
@@ -483,14 +512,15 @@ class Table:
         """Get single cell value."""
         idx = self.index_location(index)
         col = self.column_location(column)
+
         return self._data[idx][col]
 
     def get_row(self, index, columns=None, as_list=False):
         """Get column values from row.
 
-        :param index:   index for row
-        :param columns: column names to include, or all if not given
-        :param as_list: return row as dictionary, instead of list
+        :param index:   Index for row
+        :param columns: Column names to include, or all if not given
+        :param as_list: Return row as dictionary, instead of list
         """
         columns = if_none(columns, self._columns)
         idx = self.index_location(index)
@@ -511,11 +541,11 @@ class Table:
     def get_column(self, column, indexes=None, as_list=False):
         """Get row values from column.
 
-        :param columns: name for column
-        :param indexes: row indexes to include, or all if not given
-        :param as_list: return column as dictionary, instead of list
+        :param columns: Name for column
+        :param indexes: Row indexes to include, or all if not given
+        :param as_list: Return column as dictionary, instead of list
         """
-        indexes = if_none(indexes, self._index)
+        indexes = if_none(indexes, self.index)
         col = self.column_location(column)
 
         if as_list:
@@ -528,15 +558,15 @@ class Table:
             column = {}
             for index in indexes:
                 idx = self.index_location(index)
-                column[self._index[idx]] = self._data[idx][col]
+                column[idx] = self._data[idx][col]
             return column
 
     def get_table(self, indexes=None, columns=None, as_list=False):
         """Get a new table from all cells matching indexes and columns."""
-        indexes = if_none(indexes, self._index)
+        indexes = if_none(indexes, self.index)
         columns = if_none(columns, self._columns)
 
-        if indexes == self._index and columns == self._columns:
+        if indexes == self.index and columns == self._columns:
             return self.copy()
 
         idxs = [self.index_location(index) for index in indexes]
@@ -546,36 +576,27 @@ class Table:
         if as_list:
             return data
         else:
-            return Table(data=data, index=indexes, columns=columns)
+            return Table(data=data, columns=columns)
 
     def get_slice(self, start=None, end=None):
         """Get a new table from rows between start and end index."""
-        start = self.index_location(start) if start is not None else 0
-        end = self.index_location(end) if end is not None else len(self._index)
-
-        if start > end:
-            raise ValueError("Start index after end index")
-
-        index = self._index[start : end + 1]
+        index = self._slice_index(slice(start, end))
         return self.get_table(index, self._columns)
 
     def _add_row(self, index):
         """Add a new empty row into the table."""
         if index is None:
-            index = len(self._index)
+            index = self.size
 
-        if index in self._index:
+        if index < self.size:
             raise ValueError(f"Duplicate row index: {index}")
 
-        if isinstance(index, int):
-            assert index >= len(self._index)
-            for empty in range(len(self._index), index):
-                self._add_row(empty)
+        for empty in range(self.size, index):
+            self._add_row(empty)
 
-        self._index.append(index)
         self._data.append([None] * len(self._columns))
 
-        return len(self._index) - 1
+        return self.size - 1
 
     def _add_column(self, column):
         """Add a new empty column into the table."""
@@ -591,7 +612,7 @@ class Table:
                 self._add_column(empty)
 
         self._columns.append(column)
-        for idx, _ in enumerate(self._index):
+        for idx in self.index:
             row = self._data[idx]
             row.append(None)
 
@@ -607,7 +628,7 @@ class Table:
         Otherwise the length should match the cell count defined by the
         other parameters.
         """
-        indexes = to_list(if_none(indexes, self._index))
+        indexes = to_list(if_none(indexes, self.index))
         columns = to_list(if_none(columns, self._columns))
 
         size = len(indexes) + len(columns)
@@ -641,7 +662,7 @@ class Table:
         """Set values in row. If index is missing, it is created."""
         try:
             idx = self.index_location(index)
-        except ValueError:
+        except (IndexError, ValueError):
             idx = self._add_row(index)
 
         column_values = self._column_value_getter(values)
@@ -651,35 +672,27 @@ class Table:
 
     def set_column(self, column, values):
         """Set values in column. If column is missing, it is created."""
-        values = to_list(values, size=len(self._index))
+        values = to_list(values, size=self.size)
 
-        if len(values) != len(self._index):
-            raise ValueError("Index and values lengths should match")
+        if len(values) != self.size:
+            raise ValueError(
+                f"Values length ({len(values)}) should match data length ({self.size})"
+            )
 
         if column not in self._columns:
             self._add_column(column)
 
-        for index in self._index:
-            idx = self.index_location(index)
-            self.set_cell(index, column, values[idx])
+        for index in self.index:
+            self.set_cell(index, column, values[index])
 
-    def append_row(self, row=None, index=None):
+    def append_row(self, row=None):
         """Append new row to table."""
-        if index is not None and index in self._index:
-            raise IndexError(f"Index already exists: {index}")
+        self.set_row(self.size, row)
 
-        self.set_row(index, row)
-
-    def append_rows(self, rows, indexes=None):
+    def append_rows(self, rows):
         """Append multiple rows to table."""
-        if indexes is not None and len(indexes) > len(rows):
-            raise ValueError("Index length longer than data")
-
-        if indexes is None:
-            indexes = []
-
-        for row, index in zip_longest(rows, indexes):
-            self.append_row(row, index)
+        for row in rows:
+            self.append_row(row)
 
     def append_column(self, column=None, values=None):
         if column is not None and column in self._columns:
@@ -691,15 +704,13 @@ class Table:
         """Remove rows with matching indexes."""
         indexes = to_list(indexes)
 
-        unknown = set(indexes) - set(self._index)
+        unknown = set(indexes) - set(self.index)
         if unknown:
             names = ", ".join(str(name) for name in unknown)
             raise ValueError(f"Unable to remove unknown rows: {names}")
 
-        for index in indexes:
-            idx = self.index_location(index)
-            del self._index[idx]
-            del self._data[idx]
+        for index in sorted(indexes, reverse=True):
+            del self._data[index]
 
     def delete_columns(self, columns):
         """Remove columns with matching names."""
@@ -712,14 +723,9 @@ class Table:
 
         for column in columns:
             col = self.column_location(column)
-            for index in self.index:
-                idx = self.index_location(index)
+            for idx in self.index:
                 del self._data[idx][col]
             del self._columns[col]
-
-        # All data has been removed
-        if not self._columns:
-            self._index = []
 
     def append_table(self, table):
         """Append data from table to current data."""
@@ -727,25 +733,11 @@ class Table:
             return
 
         indexes = []
-        for idx, index in enumerate(table.index):
-            if isinstance(index, int):
-                index = len(self) + idx
-            elif index in self._index:
-                raise ValueError(f"Duplicate index name: {index}")
+        for idx in table.index:
+            index = self.size + idx
             indexes.append(index)
 
         self.set(indexes=indexes, columns=table.columns, values=table.data)
-
-    def reset_index(self, drop=False):
-        """Remove all named row indexes and use range-based values."""
-        if not drop:
-            self.append_column(column="index", values=self._index)
-
-        self.index = list(range(len(self)))
-
-    def sort_by_index(self, ascending=False):
-        """Sort table by index values."""
-        self._sort_by(self.index, reverse=not ascending)
 
     def sort_by_column(self, columns, ascending=False):
         """Sort table by columns."""
@@ -754,13 +746,7 @@ class Table:
         # Create sort criteria list, with each row as tuple of column values
         values = (self.get_column(column, as_list=True) for column in columns)
         values = list(zip(*values))
-
-        self._sort_by(values, reverse=not ascending)
-
-    def _sort_by(self, values, reverse=False):
-        """Sort index and data by using `values` as sorting criteria."""
-        assert is_list_like(values)
-        assert len(values) == len(self._data)
+        assert len(values) == self.size
 
         def sorter(row):
             """Sort table by given values, while allowing for disparate types.
@@ -780,19 +766,10 @@ class Table:
                 )
             return criteria
 
-        # Store original index order using enumerate() before sort, and
-        # use it to sort index/data later
-        values = sorted(enumerate(values), key=sorter, reverse=reverse)
+        # Store original index order using enumerate() before sort,
+        # and use it to sort data later
+        values = sorted(enumerate(values), key=sorter, reverse=ascending)
         idxs = [value[0] for value in values]
-
-        # Re-order index, and update range-based values
-        indexes = []
-        for idx_new, idx_old in enumerate(idxs):
-            index = self._index[idx_old]
-            if isinstance(index, int):
-                indexes.append(idx_new)
-            else:
-                indexes.append(index)
 
         # Re-order data
         self._data = [self._data[idx] for idx in idxs]
@@ -831,15 +808,15 @@ class Table:
 
     def iter_lists(self, with_index=True):
         """Iterate rows with values as lists."""
-        for idx, row in zip(self._index, self._data):
+        for idx, row in zip(self.index, self._data):
             if with_index:
                 yield idx, list(row)
             else:
                 yield list(row)
 
-    def iter_dicts(self, with_index=True):
+    def iter_dicts(self, with_index=True) -> Generator[Dict[Column, Any], None, None]:
         """Iterate rows with values as dicts."""
-        for index in self._index:
+        for index in self.index:
             row = {"index": index} if with_index else {}
             for column in self._columns:
                 row[column] = self.get_cell(index, column)
@@ -864,7 +841,7 @@ class Table:
         """Convert table to list representation."""
         export = []
 
-        for index in self._index:
+        for index in self.index:
             row = OrderedDict()
             if with_index:
                 row["index"] = index
@@ -884,7 +861,7 @@ class Table:
         for column in self._columns:
             export[column] = []
 
-        for index in self._index:
+        for index in self.index:
             for column in self._columns:
                 value = self.get_cell(index, column)
                 export[column].append(value)
@@ -901,7 +878,7 @@ class Tables:
 
     **Import types**
 
-    The data from which a table can be created can be of two main types:
+    The data a table can be created from can be of two main types:
 
     1. An iterable of individual rows, like a list of lists, or list of dictionaries
     2. A dictionary of columns, where each dictionary value is a list of values
@@ -926,12 +903,31 @@ class Tables:
     +-------+------+-----+
     | Index | Name | Age |
     +=======+======+=====+
-    | 1     | Mark | 58  |
+    | 0     | Mark | 58  |
     +-------+------+-----+
-    | 2     | John | 22  |
+    | 1     | John | 22  |
     +-------+------+-----+
-    | 3     | Adam | 67  |
+    | 2     | Adam | 67  |
     +-------+------+-----+
+
+    **Indexing columns and rows**
+
+    Columns can be referred to in two ways: either with a unique string
+    name or their position as an integer. Columns can be named either when
+    the table is created, or they can be (re)named dynamically with keywords.
+    The integer position can always be used, and it starts from zero.
+
+    For instance, a table with columns "Name", "Age", and "Address" would
+    allow referring to the "Age" column with either the name "Age" or the
+    number 1.
+
+    Rows do not have a name, but instead only have an integer index. This
+    index also starts from zero. Keywords where rows are indexed also support
+    negative values, which start counting backwards from the end.
+
+    For instance, in a table with five rows, the first row could be referred
+    to with the number 0. The last row could be accessed with either 4 or
+    -1.
 
     **Examples**
 
@@ -984,23 +980,27 @@ class Tables:
         self.logger = logging.getLogger(__name__)
 
     @staticmethod
-    def _requires_table(obj):
+    def _requires_table(obj: Any):
         if not isinstance(obj, Table):
             raise TypeError("Keyword requires Table object")
 
-    def create_table(self, data=None, trim=False, columns=None, index=None):
+    def create_table(
+        self, data: Data = None, trim: bool = False, columns: List[str] = None
+    ) -> Table:
         """Create Table object from data.
 
         Data can be a combination of various iterable containers, e.g.
         list of lists, list of dicts, dict of lists.
 
-        :param data:    source data for table
-        :param trim:    remove all empty rows from the end of the worksheet,
+        :param data:    Source data for table
+        :param trim:    Remove all empty rows from the end of the worksheet,
                         default `False`
-        :param columns: names of columns (optional)
-        :param index:   names of rows (optional)
+        :param columns: Names of columns (optional)
+
+        See the main library documentation for more information about
+        supported data types.
         """
-        table = Table(data, columns, index)
+        table = Table(data, columns)
 
         if trim:
             self.trim_empty_rows(table)
@@ -1011,12 +1011,24 @@ class Tables:
 
         return table
 
-    def export_table(self, table, with_index=False, as_list=True):
-        """Convert table object to standard Python containers.
+    def export_table(
+        self, table: Table, with_index: bool = False, as_list: bool = True
+    ) -> Union[List, Dict]:
+        """Convert a table object into standard Python containers.
 
-        :param table:       table to convert to dict
-        :param with_index:  include index in values
-        :param as_list:     export data as list instead of dict
+        :param table:       Table to convert to dict
+        :param with_index:  Include index in values
+        :param as_list:     Export data as list instead of dict
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${orders}=       Read worksheet as table    orders.xlsx
+            Sort table by column    ${orders}    CustomerId
+            ${export}=       Export table    ${orders}
+            # The following keyword expects a dictionary:
+            Write as JSON    ${export}
         """
         self._requires_table(table)
         if as_list:
@@ -1024,23 +1036,23 @@ class Tables:
         else:
             return table.to_dict(with_index)
 
-    def copy_table(self, table):
-        """Copy table object.
+    def copy_table(self, table: Table) -> Table:
+        """Make a copy of a table object.
 
-        :param table:   table to copy
+        :param table:   Table to copy
         """
         self._requires_table(table)
         return table.copy()
 
-    def clear_table(self, table):
+    def clear_table(self, table: Table):
         """Clear table in-place, but keep columns.
 
-        :param table:   table to clear
+        :param table:   Table to clear
         """
         self._requires_table(table)
         table.clear()
 
-    def merge_tables(self, *tables, index=None):
+    def merge_tables(self, *tables: Table, index: Optional[str] = None) -> Table:
         """Create a union of two tables and their contents.
 
         :param tables: Tables to merge
@@ -1087,7 +1099,7 @@ class Tables:
         else:
             return self._merge_by_index(tables, index)
 
-    def _merge_by_append(self, tables):
+    def _merge_by_append(self, tables: Tuple[Table, ...]):
         """Merge tables by appending columns and rows."""
         columns = uniq(column for table in tables for column in table.columns)
 
@@ -1097,7 +1109,7 @@ class Tables:
 
         return merged
 
-    def _merge_by_index(self, tables, index):
+    def _merge_by_index(self, tables: Tuple[Table, ...], index: str):
         """Merge tables by using a column as shared key."""
         columns = uniq(column for table in tables for column in table.columns)
         merged = Table(columns=columns)
@@ -1126,32 +1138,56 @@ class Tables:
 
         return merged
 
-    def get_table_dimensions(self, table):
+    def get_table_dimensions(self, table: Table) -> Tuple[int, int]:
         """Return table dimensions, as (rows, columns).
 
-        :param table:    table to inspect
+        :param table:    Table to inspect
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${rows}  ${columns}=    Get table dimensions    ${table}
+            Log    Table has ${rows} rows and ${columns} columns.
         """
         self._requires_table(table)
         notebook_print(text=table.dimensions)
         return table.dimensions
 
-    def rename_table_columns(self, table, columns, strict=False):
+    def rename_table_columns(
+        self, table: Table, names: List[Union[str, None]], strict: bool = False
+    ):
         """Renames columns in the Table with given values. Columns with
-        name as `None` will be use previous value.
+        name as ``None`` will use the previous value.
 
-        :param table:   table to modify
-        :param columns: list of new column names
-        :param strict:  if True, raises ValueError if column lengths
+        :param table:   Table to modify
+        :param names:   List of new column names
+        :param strict:  If True, raises ValueError if column lengths
                         do not match
+
+        The renaming will be done in-place.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${columns}=    Create list   First  Second  Third
+            Rename table columns    ${table}    ${columns}
+            # First, Second, Third
+
+
+            ${columns}=    Create list   Uno  Dos
+            Rename table columns    ${table}    ${columns}
+            # Uno, Dos, Third
         """
         self._requires_table(table)
         before = table.columns
 
-        if strict and len(before) != len(columns):
+        if strict and len(before) != len(names):
             raise ValueError("Column lengths do not match")
 
         after = []
-        for old, new in zip_longest(before, columns):
+        for old, new in zip_longest(before, names):
             if old is None:
                 break
             elif new is None:
@@ -1161,206 +1197,363 @@ class Tables:
 
         table.columns = after
 
-    def add_table_column(self, table, name=None, values=None):
+    def add_table_column(
+        self, table: Table, name: Optional[str] = None, values: Any = None
+    ):
         """Append a column to a table.
 
-        :param table:   table to modify
-        :param name:    name of new column
-        :param values:  row values (or single scalar value for all rows)
+        :param table:   Table to modify
+        :param name:    Name of new column
+        :param values:  Value(s) for new column
+
+        The ``values`` can either be a list of values, one for each row, or
+        one single value that is set for all rows.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Add empty column
+            Add table column    ${table}
+
+            # Add empty column with name
+            Add table column    ${table}    name=Home Address
+
+            # Add new column where every every row has the same value
+            Add table column    ${table}    name=TOS    values=${FALSE}
+
+            # Add new column where every row has a unique value
+            ${is_first}=    Create list    ${TRUE}    ${FALSE}    ${FALSE}
+            Add table column    ${table}    name=IsFirst    values=${is_first}
         """
         self._requires_table(table)
         table.append_column(name, values)
 
-    def add_table_row(self, table, row, index=None):
+    def add_table_row(self, table: Table, values: Any = None):
         """Append rows to a table.
 
-        :param table:   table to modify
-        :param row:     value for new row
-        :param index:   index name for new row
+        :param table:   Table to modify
+        :param values:  Value(s) for new row
+
+        The ``values`` can either be a list of values, or a dictionary
+        where the keys match current column names. Values for unknown
+        keys are discarded.
+
+        It can also be a single value that is set for all columns,
+        which is ``None`` by default.
+
+        Example:s
+
+        .. code-block:: robotframework
+
+            # Add empty row
+            Add table row    ${table}
+
+            # Add row where every column has the same value
+            Add table row    ${table}    Unknown
+
+            # Add values per column
+            ${values}=    Create dictionary    Username=Mark    Mail=mark@robocorp.com
+            Add table row    ${table}    ${values}
         """
         self._requires_table(table)
-        table.append_row(row, index=index)
+        table.append_row(values)
 
-    def get_table_row(self, table, index, as_list=False):
-        """Get a single row from table.
+    def get_table_row(
+        self, table: Table, row: Index, as_list: bool = False
+    ) -> Union[Dict, List]:
+        """Get a single row from a table.
 
-        :param table:   table to read
-        :param row:     row to read
-        :param as_list: return list instead of dictionary
+        :param table:   Table to read
+        :param row:     Row to read
+        :param as_list: Return list instead of dictionary
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${first}=    Get table row    ${orders}
+            Log     Handling order: ${first}[Order ID]
+
+            ${row}=      Get table row    ${data}    -1    as_list=${TRUE}
+            FOR    ${value}    IN    @{row}
+                Log    Data point: ${value}
+            END
         """
         self._requires_table(table)
-        row = table.get_row(index, as_list=as_list)
-        notebook_print(text=row)
-        return row
+        values = table.get_row(row, as_list=as_list)
+        notebook_print(text=values)
+        return values
 
-    def get_table_column(self, table, column, as_list=False):
-        """Get all column values from table.
+    def get_table_column(self, table: Table, column: Column) -> List:
+        """Get all values for a single column in a table.
 
-        :param table:   table to read
-        :param column:  column to read
-        :param as_list: return list instead of dictionary
+        :param table:   Table to read
+        :param column:  Column to read
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${emails}=    Get table column    ${users}    E-Mail Address
+            FOR    ${email}    IN    @{emails}
+                Send promotion    ${email}
+            END
         """
         self._requires_table(table)
-        col = table.get_column(column, as_list=as_list)
+        col = table.get_column(column, as_list=True)
         return col
 
-    def set_table_row(self, table, row, values):
+    def set_table_row(self, table: Table, row: Index, values: Any):
         """Assign values to a row in the table.
 
-        :param table:   table to modify
-        :param row:     row to modify
-        :param values:  value(s) to set
+        :param table:   Table to modify
+        :param row:     Row to modify
+        :param values:  Value(s) to set
+
+        The ``values`` can either be a list of values, or a dictionary
+        where the keys match current column names. Values for unknown
+        keys are discarded.
+
+        It can also be a single value that is set for all columns.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${columns}=  Create list     One  Two  Three
+            ${table}=    Create table    columns=${columns}
+
+            ${values}=   Create list     1  2  3
+            Set table row    ${table}    0    ${values}
+
+            ${values}=   Create dictionary    One=1  Two=2  Three=3
+            Set table row    ${table}    1    ${values}
+
+            Set table row    ${table}    2    ${NONE}
         """
         self._requires_table(table)
         table.set_row(row, values)
 
-    def set_table_column(self, table, column, values):
+    def set_table_column(self, table: Table, column: Column, values: Any):
         """Assign values to entire column in the table.
 
-        :param table:   table to modify
-        :param column:  column to modify
-        :param values:  value(s) to set
+        :param table:   Table to modify
+        :param column:  Column to modify
+        :param values:  Value(s) to set
+
+        The ``values`` can either be a list of values, one for each row, or
+        one single value that is set for all rows.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Set different value for each row (sizes must match)
+            ${ids}=    Create list    1  2  3  4  5
+            Set table column    ${users}    userId    ${ids}
+
+            # Set the same value for all rows
+            Set table column    ${users}    email     ${NONE}
         """
         self._requires_table(table)
         table.set_column(column, values)
 
-    def pop_table_row(self, table, index=None, as_list=False):
+    def pop_table_row(
+        self, table: Table, row: Optional[Index] = None, as_list: bool = False
+    ) -> Union[Dict, List]:
         """Remove row from table and return it.
 
-        :param table:   table to modify
-        :param index:   row index, pops first row if none given
-        :param as_list: return list instead of dictionary
+        :param table:   Table to modify
+        :param row:     Row index, pops first row if none given
+        :param as_list: Return list instead of dictionary
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${first}=    Pop table row    ${orders}
+            Log     Handling order: ${first}[Order ID]
+
+            ${row}=      Pop table row    ${data}    -1    as_list=${TRUE}
+            FOR    ${value}    IN    @{row}
+                Log    Data point: ${value}
+            END
         """
         self._requires_table(table)
-        index = if_none(index, table.index[0])
+        row = if_none(row, table.index[0])
 
-        values = table.get_row(index, as_list=as_list)
-        table.delete_rows(index)
+        values = table.get_row(row, as_list=as_list)
+        table.delete_rows(row)
         return values
 
-    def pop_table_column(self, table, column=None, as_list=False):
+    def pop_table_column(
+        self, table: Table, column: Optional[Column] = None
+    ) -> Union[Dict, List]:
         """Remove column from table and return it.
 
-        :param table:   table to modify
-        :param column:  column to remove
-        :param as_list: return list instead of dictionary
+        :param table:   Table to modify
+        :param column:  Column to remove
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Remove column from table and discard it
+            Pop table column    ${users}   userId
+
+            # Remove column from table and iterate over it
+            ${ids}=    Pop table column    ${users}    userId
+            FOR    ${id}    IN    @{ids}
+                Log    User id: ${id}
+            END
         """
         self._requires_table(table)
-        column = if_none(column, table.columns[0])
+        column: Column = if_none(column, table.columns[0])
 
-        values = self.get_table_column(table, column, as_list)
+        values = self.get_table_column(table, column)
         table.delete_columns(column)
         return values
 
-    def get_table_slice(self, table, start=None, end=None):
-        """Return a new Table from a subset of given Table rows.
+    def get_table_slice(
+        self, table: Table, start: Optional[Index] = None, end: Optional[Index] = None
+    ) -> Union[Table, List[List]]:
+        """Return a new Table from a range of given Table rows.
 
-        :param table:   table to read from
-        :param start:   start index (inclusive)
-        :param start:   end index (inclusive)
+        :param table:   Table to read from
+        :param start:   Start index (inclusive)
+        :param start:   End index (exclusive)
+
+        If ``start`` is not defined, starts from the first row.
+        If ``end`` is not defined, stops at the last row.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Get all rows except first five
+            ${slice}=    Get table slice    ${table}    start=5
+
+            # Get rows at indexes 5, 6, 7, 8, and 9
+            ${slice}=    Get table slice    ${table}    start=5    end=10
+
+            # Get all rows except last five
+            ${slice}=    Get table slice    ${table}    end=-5
         """
         self._requires_table(table)
         return table.get_slice(start, end)
 
-    def find_table_rows(self, table, column, value, as_list=False):
-        """Find a row in the table by a given column value.
-
-        :param table:   Table to find from
-        :param column:  name of column to search
-        :param value:   value to match for
-        :param as_list: return list instead of dictionary
-        """
-        self._requires_table(table)
-        result = []
-        for row in table.iter_dicts(True):
-            if row[column] == value:
-                match = self.get_table_row(table, row["index"], as_list)
-                result.append(match)
-        return result
-
-    def set_row_as_column_names(self, table, index):
+    def set_row_as_column_names(self, table: Table, row: Index):
         """Set existing row as names for columns.
 
-        :param table: table to modify
-        :param index: row to use as column names
+        :param table: Table to modify
+        :param row:   Row to use as column names
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            ${table}=    Read table from CSV    data.csv
+            Set row as column names    ${table}    0
         """
-        values = self.pop_table_row(table, index, as_list=True)
+        values = self.pop_table_row(table, row, as_list=True)
         table.columns = values
 
-    def set_column_as_index(self, table, column=None):
-        """Set existing column as index for rows.
+    def table_head(
+        self, table: Table, count: int = 5, as_list: bool = False
+    ) -> Union[Table, List[List]]:
+        """Return first ``count`` rows from a table.
 
-        :param table:   table to modify
-        :param column:  column to convert to index
-        """
-        values = self.pop_table_column(table, column, as_list=True)
-        table.index = values
+        :param table:   Table to read from
+        :param count:   Number of lines to read
+        :param as_list: Return list instead of Table
 
-    def table_head(self, table, count=5, as_list=False):
-        """Return first `count` rows from table.
+        Examples:
 
-        :param table:   table to read from
-        :param count:   number of lines to read
-        :param as_list: return list instead of Table
+        .. code-block:: robotframework
+
+            # Get the first 10 employees
+            ${employees}=    Read worksheet as table    employees.xlsx
+            ${first}=        Table head    ${employees}    10
         """
         self._requires_table(table)
         return table.head(count, as_list)
 
-    def table_tail(self, table, count=5, as_list=False):
-        """Return last `count` rows from table.
+    def table_tail(
+        self, table: Table, count: int = 5, as_list: bool = False
+    ) -> Union[Table, List[List]]:
+        """Return last ``count`` rows from a table.
 
-        :param table:   table to read from
-        :param count:   number of lines to read
-        :param as_list: return list instead of Table
+        :param table:   Table to read from
+        :param count:   Number of lines to read
+        :param as_list: Return list instead of Table
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Get the last 10 orders
+            ${orders}=    Read worksheet as table    orders.xlsx
+            ${latest}=    Table tail    ${orders}    10
         """
         self._requires_table(table)
         return table.tail(count, as_list)
 
-    def get_table_cell(self, table, row, column):
-        """Get a cell value from table.
+    def get_table_cell(self, table: Table, row: Index, column: Column) -> Any:
+        """Get a cell value from a table.
 
-        :param table:   table to read from
-        :param row:     row of cell
-        :param column:  column of cell
+        :param table:   Table to read from
+        :param row:     Row of cell
+        :param column:  Column of cell
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Get the value in the first row and first column
+            Get table cell    ${table}    0    0
+
+            # Get the value in the last row and first column
+            Get table cell    ${table}   -1    0
+
+            # Get the value in the third row and column "Name"
+            Get table cell    ${table}    2    Name
         """
         self._requires_table(table)
         return table.get_cell(row, column)
 
-    def set_table_cell(self, table, row, column, value):
-        """Set a cell value in the table.
+    def set_table_cell(self, table: Table, row: Index, column: Column, value: Any):
+        """Set a cell value in a table.
 
-        :param table:   table to modify to
-        :param row:     row of cell
-        :param column:  column of cell
-        :param value:   value to set
+        :param table:   Table to modify to
+        :param row:     Row of cell
+        :param column:  Column of cell
+        :param value:   Value to set
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Set the value in the first row and first column to "First"
+            Set table cell    ${table}    0    0       First
+
+            # Set the value in the last row and first column to "Last"
+            Set table cell    ${table}   -1    0       Last
+
+            # Set the value in the third row and column "Name" to "Unknown"
+            Set table cell    ${table}    2    Name    Unknown
         """
         self._requires_table(table)
         table.set_cell(row, column, value)
 
-    def sort_table_by_column(self, table, column, ascending=False):
-        """Sort table in-place according to `column`.
+    def find_table_rows(self, table: Table, column: Column, operator: str, value: Any):
+        """Find all rows in a table which match a condition for a
+        given column.
 
-        :param table:       table to sort
-        :param column:      column to sort with
-        :param ascending:   table sort order
-        """
-        self._requires_table(table)
-        table.sort_by_column(column, ascending=ascending)
-
-    def group_table_by_column(self, table, column):
-        """Group table by `column` and return a list of grouped Tables.
-
-        :param table:   table to use for grouping
-        :param column:  column which is used as grouping criteria
-        """
-        self._requires_table(table)
-        groups = table.group_by_column(column)
-        self.logger.info("Found %s groups", len(groups))
-        return groups
-
-    def filter_table_by_column(self, table, column, operator, value):
-        """Remove all rows where the column values don't match the
-        given condition.
+        :param table:    Table to find from
+        :param column:   Name of column to search
+        :param operator: Comparison operator
+        :param value:    Value to compare against
 
         Supported operators:
 
@@ -1373,11 +1566,92 @@ class Tables:
         <=           Cell value is smaller or equal than
         ==           Cell value is equal to
         !=           Cell value is not equal to
+        is           Cell value is the same object
+        not is       Cell value is not the same object
         contains     Cell value contains given value
         not contains Cell value does not contain given value
         in           Cell value is in given value
         not in       Cell value is not in given value
         ============ ========================================
+
+        Returns the matches as a new Table instance.
+
+        Examples:
+
+        .. code-block:: robotframework
+
+            # Find all rows where price is over 200
+            @{rows}=    Find table rows    Price  >  ${200}
+
+            # Find all rows where the status does not contain "removed"
+            @{rows}=    Find table rows    Status    not contains    removed
+        """
+        self._requires_table(table)
+
+        condition = to_condition(operator, value)
+
+        matches = []
+        for index in table.index:
+            cell = table.get_cell(index, column)
+            if condition(cell):
+                matches.append(index)
+
+        return table.get_table(matches)
+
+    def sort_table_by_column(
+        self, table: Table, column: Column, ascending: bool = False
+    ):
+        """Sort a table in-place according to ``column``.
+
+        :param table:       Table to sort
+        :param column:      Column to sort with
+        :param ascending:   Table sort order
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${orders}=    Read worksheet as table    orders.xlsx
+            Sort table by column    ${orders}    order_date
+        """
+        self._requires_table(table)
+        table.sort_by_column(column, ascending=ascending)
+
+    def group_table_by_column(self, table: Table, column: Column) -> List[Table]:
+        """Group a table by ``column`` and return a list of grouped Tables.
+
+        :param table:   Table to use for grouping
+        :param column:  Column which is used as grouping criteria
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${orders}=    Read worksheet as table    orders.xlsx
+            @{groups}=    Group table by column    ${orders}    customer
+            FOR    ${group}    IN    @{groups}
+                # Process all orders for the customer at once
+                Process order    ${group}
+            END
+        """
+        self._requires_table(table)
+        groups = table.group_by_column(column)
+        self.logger.info("Found %s groups", len(groups))
+        return groups
+
+    def filter_table_by_column(
+        self, table: Table, column: Column, operator: str, value: Any
+    ):
+        """Remove all rows where column values don't match the
+        given condition.
+
+        :param table:     Table to filter
+        :param column:    Column to filter with
+        :param operator:  Filtering operator, e.g. >, <, ==, contains
+        :param value:     Value to compare column to (using operator)
+
+        See the keyword ``Find table rows`` for all supported operators
+        and their descriptions.
 
         The filtering will be done in-place.
 
@@ -1391,41 +1665,30 @@ class Tables:
             # Remove uwnanted product types
             @{types}=    Create list    Unknown    Removed
             Filter table by column    ${table}   product_type  not in  ${types}
-
-        :param table:       table to filter
-        :param column:      column to filter with
-        :param operator:    filtering operator, e.g. >, <, ==, contains
-        :param value:       value to compare column to (using operator)
         """
         self._requires_table(table)
 
-        operator = str(operator).lower().strip()
-        condition = {
-            ">": lambda x: x is not None and x > value,
-            "<": lambda x: x is not None and x < value,
-            ">=": lambda x: x is not None and x >= value,
-            "<=": lambda x: x is not None and x <= value,
-            "==": lambda x: x is not None and x == value,
-            "!=": lambda x: x is not None and x != value,
-            "contains": lambda x: x is not None and value in x,
-            "not contains": lambda x: x is not None and value not in x,
-            "in": lambda x: x in value,
-            "not in": lambda x: x not in value,
-        }.get(operator)
+        condition = to_condition(operator, value)
 
-        if not condition:
-            raise ValueError(f"Unknown operator: {operator}")
-
-        self.logger.info("Rows before filtering: %s", len(table))
+        before = len(table)
         table.filter_by_column(column, condition)
-        self.logger.info("Rows after filtering: %s", len(table))
+        after = len(table)
 
-    def filter_empty_rows(self, table):
-        """Remove all rows from the table which have only None values.
+        self.logger.info("Filtered %d rows", after - before)
+
+    def filter_empty_rows(self, table: Table):
+        """Remove all rows from a table which have only ``None`` values.
+
+        :param table:   Table to filter
 
         The filtering will be done in-place.
 
-        :param table:   table to filter
+        Example:
+
+        .. code-block:: robotframework
+
+            ${table}=    Read worksheet as table    orders.xlsx
+            Filter empty rows    ${table}
         """
         self._requires_table(table)
 
@@ -1436,11 +1699,20 @@ class Tables:
 
         table.delete_rows(empty)
 
-    def trim_empty_rows(self, table):
-        """Remove all rows from the end of the table
-        which have only None values.
+    def trim_empty_rows(self, table: Table):
+        """Remove all rows from the *end* of a table
+        which have only ``None`` as values.
 
-        :param table:    table to filter
+        :param table:    Table to filter
+
+        The filtering will be done in-place.
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${table}=    Read worksheet as table    orders.xlsx
+            Trim empty rows    ${table}
         """
         self._requires_table(table)
 
@@ -1453,33 +1725,48 @@ class Tables:
 
         table.delete_rows(empty)
 
-    def trim_column_names(self, table):
-        """Remove all extraneous whitespace from column names."""
+    def trim_column_names(self, table: Table):
+        """Remove all extraneous whitespace from column names.
+
+        :param table:    Table to filter
+
+        The filtering will be done in-place.
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${table}=    Read table from CSV    data.csv
+            Log    ${table.columns}  # "One", "Two ", "  Three "
+            Trim column names     ${table}
+            Log    ${table-columns}  # "One", "Two", "Three"
+        """
         self._requires_table(table)
         table.columns = [
             column.strip() if isinstance(column, str) else column
             for column in table.columns
         ]
 
+    @keyword("Read table from CSV")
     def read_table_from_csv(
         self,
-        path,
-        header=None,
-        columns=None,
-        dialect=None,
-        delimiters=None,
-        column_unknown="Unknown",
-        encoding=None,
-    ):
+        path: str,
+        header: Optional[bool] = None,
+        columns: Optional[List[str]] = None,
+        dialect: Optional[Dialect] = None,
+        delimiters: Optional[str] = None,
+        column_unknown: str = "Unknown",
+        encoding: Optional[str] = None,
+    ) -> Table:
         """Read a CSV file as a table.
 
-        :param path:            path to CSV file
+        :param path:            Path to CSV file
         :param header:          CSV file includes header
-        :param columns:         names of columns in resulting table
-        :param dialect:         format of CSV file
-        :param delimiters:      string of possible delimiters
-        :param column_unknown:  column name for unknown fields
-        :param encoding:        text encoding for input file,
+        :param columns:         Names of columns in resulting table
+        :param dialect:         Format of CSV file
+        :param delimiters:      String of possible delimiters
+        :param column_unknown:  Column name for unknown fields
+        :param encoding:        Text encoding for input file,
                                 uses system encoding by default
 
         By default attempts to deduce the CSV format and headers
@@ -1516,17 +1803,22 @@ class Tables:
             sample = fd.read(1024)
 
         if dialect is None:
-            dialect = sniffer.sniff(sample, delimiters)
+            dialect_name = sniffer.sniff(sample, delimiters)
+        elif isinstance(dialect, Dialect):
+            dialect_name = dialect.value
+        else:
+            dialect_name = Dialect(dialect).value
+
         if header is None:
             header = sniffer.has_header(sample)
 
         with open(path, newline="") as fd:
             if header:
                 reader = csv.DictReader(
-                    fd, dialect=dialect, restkey=str(column_unknown)
+                    fd, dialect=dialect_name, restkey=str(column_unknown)
                 )
             else:
-                reader = csv.reader(fd, dialect=dialect)
+                reader = csv.reader(fd, dialect=dialect_name)
             rows = list(reader)
 
         table = Table(rows, columns)
@@ -1541,24 +1833,40 @@ class Tables:
 
         return table
 
+    @keyword("Write table to CSV")
     def write_table_to_csv(
-        self, table, path, header=True, dialect="excel", encoding=None
+        self,
+        table: Table,
+        path: str,
+        header: bool = True,
+        dialect: Dialect = Dialect.Excel,
+        encoding: Optional[str] = None,
     ):
         """Write a table as a CSV file.
 
-        :param path:     path to write to
-        :param table:    table to write
-        :param header:   write columns as header to CSV file
-        :param dialect:  the format of output CSV
-        :param encoding: text encoding for output file,
+        :param table:    Table to write
+        :param path:     Path to write to
+        :param header:   Write columns as header to CSV file
+        :param dialect:  The format of output CSV
+        :param encoding: Text encoding for output file,
                          uses system encoding by default
 
-        Valid ``dialect`` values are ``excel``, ``excel-tab``, and ``unix``.
+        Valid ``dialect`` values are ``Excel``, ``ExcelTab``, and ``Unix``.
+
+        Example:
+
+        .. code-block:: robotframework
+
+            ${sheet}=    Read worksheet as table    orders.xlsx    header=${TRUE}
+            Write table to CSV    ${sheet}    output.csv
         """
         self._requires_table(table)
 
+        if isinstance(dialect, str):
+            dialect = Dialect(dialect)
+
         with open(path, mode="w", newline="", encoding=encoding) as fd:
-            writer = csv.DictWriter(fd, fieldnames=table.columns, dialect=dialect)
+            writer = csv.DictWriter(fd, fieldnames=table.columns, dialect=dialect.value)
 
             if header:
                 writer.writeheader()

@@ -68,7 +68,7 @@ class Configuration:
         )
         self.configuration["port"] = port or (
             int(config.get("default", "port"))
-            if config.has_option("default", "host")
+            if config.has_option("default", "port")
             else None
         )
         self.configuration["charset"] = charset or (
@@ -183,6 +183,7 @@ class Database:
         port: int = None,
         charset: str = None,
         config_file: str = "db.cfg",
+        autocommit: bool = False,
     ):
         """Connect to database using DB API 2.0 module.
 
@@ -194,6 +195,7 @@ class Database:
         :param port: SQL server port
         :param charset: for example, "utf-8", defaults to None
         :param config_file: location of configuration file, defaults to "db.cfg"
+        :param autocommit: set autocommit value for connect (only with pymssql atm)
 
         Example:
 
@@ -203,6 +205,7 @@ class Database:
             Connect To Database  ${CURDIR}${/}resources${/}dbconfig.cfg
 
         """
+        # TODO. take autocommit into use for all database modules
         self.config.parse_arguments(
             module_name, database, username, password, host, port, charset, config_file
         )
@@ -330,6 +333,7 @@ class Database:
                 database=self.config.get("database"),
                 port=self.config.get("port"),
                 host=self.config.get("host", "."),
+                autocommit=autocommit,
             )
         else:
             conf = self.config.all_but_empty()
@@ -427,17 +431,14 @@ class Database:
             Execute SQL Script   script.sql
 
         """
-        sql_script_file = open(filename)
+        with open(filename) as script_file:
+            sql_script = script_file.readlines()
 
         cur = None
         try:
             cur = self._dbconnection.cursor()
             sqlStatement = ""
-            for line in sql_script_file:
-                PY3K = sys.version_info >= (3, 0)
-                if not PY3K:
-                    # spName = spName.encode('ascii', 'ignore')
-                    line = line.strip().decode("utf-8")
+            for line in sql_script:
                 if line.startswith("#") or line.startswith("--"):
                     continue
 
@@ -466,7 +467,13 @@ class Database:
                 if not sanstran:
                     self._dbconnection.rollback()
 
-    def query(self, statement, assertion=None, sanstran=False, as_table=True):
+    def query(
+        self,
+        statement: str,
+        assertion: str = None,
+        sanstran: bool = False,
+        as_table: bool = True,
+    ):
         """Make a SQL query.
 
         :param statement: SQL statement to execute
@@ -499,27 +506,10 @@ class Database:
             cursor = self._dbconnection.cursor()
             self.logger.info("Executing : Query  |  %s ", statement)
             result = self.__execute_sql(cursor, statement)
-
-            if statement.lower().startswith("select") or statement.lower().startswith(
-                "describe"
-            ):
+            if self._is_returnable_statement(statement):
                 rows = cursor.fetchall()
                 columns = [c[0] for c in cursor.description]
-                # pylint: disable=unused-variable
-                row_count = len(rows)  # noqa: F841
-                if assertion:
-                    available_locals = {
-                        "row_count": row_count,
-                        "columns": columns,
-                    }
-                    # pylint: disable=W0123
-                    valid = eval(assertion, {"__builtins__": None}, available_locals)
-
-                    if not valid:
-                        raise AssertionError(
-                            "Query assertion %s failed. Facts: %s"
-                            % (assertion, available_locals)
-                        )
+                self._result_assertion(rows, columns, assertion)
                 if as_table:
                     return Table(rows, columns)
                 return rows
@@ -534,6 +524,27 @@ class Database:
                 if not sanstran:
                     self._dbconnection.rollback()
         return result
+
+    def _is_returnable_statement(self, statement):
+        starts_with = statement.lower().split(" ")[0]
+        return starts_with in ["select", "describe", "show", "explain"]
+
+    def _result_assertion(self, rows, columns, assertion):
+        if assertion:
+            # pylint: disable=unused-variable
+            row_count = len(rows)  # noqa: F841
+            available_locals = {
+                "row_count": row_count,
+                "columns": columns,
+            }
+            # pylint: disable=W0123
+            valid = eval(assertion, {"__builtins__": None}, available_locals)
+
+            if not valid:
+                raise AssertionError(
+                    "Query assertion %s failed. Facts: %s"
+                    % (assertion, available_locals)
+                )
 
     def __execute_sql(self, cursor, sqlStatement):
         return cursor.execute(sqlStatement)

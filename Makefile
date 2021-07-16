@@ -72,6 +72,8 @@ docs-libdoc: install ## Generate documentation using Robot Framework Libdoc
 		--exclude RPA.Desktop.utils*\
 		--exclude RPA.PDF.keywords*\
 		--exclude RPA.Cloud.objects*\
+		--exclude RPA.Cloud.Google.keywords*\
+		--exclude RPA.Dialogs.*\
 		rpaframework
 
 	poetry run python -c "import shutil; shutil.copy2('docs/source/template/iframeResizer.contentWindow.map', 'docs/source/include/libdoc/')"
@@ -87,6 +89,8 @@ docs-libdoc: install ## Generate documentation using Robot Framework Libdoc
 		--exclude RPA.Desktop.utils*\
 		--exclude RPA.PDF.keywords*\
 		--exclude RPA.Cloud.objects*\
+		--exclude RPA.Cloud.Google.keywords*\
+		--exclude RPA.Dialogs.*\
 		rpaframework
 
 changelog: ## Print changes in latest release
@@ -100,3 +104,6 @@ lint-each: packages/*
 
 install-hooks: ## Install git hooks
 	git config core.hooksPath ./config/git-hooks/
+
+local: ## Serve docs from local http server
+	poetry run python -m http.server -d docs/build/html/
