@@ -175,12 +175,27 @@ def test_read_worksheet_as_table_start_offset(library):
     assert table[0, 2] == "Hashimoto"
 
 
-@pytest.mark.skip(reason="Bug in Tables integer column handling")
 def test_read_worksheet_as_table_start_offset_and_header(library):
     table = library.read_worksheet_as_table(name="First", start=2, header=True)
     assert len(table) == 8
-    assert table.columns == [1.0, "Dulce", "Abril", "Female", "United States", 32.0]
+    assert table.columns == ["1", "Dulce", "Abril", "Female", "United States", "32"]
     assert table[0, 2] == "Hashimoto"
+
+
+def test_read_worksheet_empty(library):
+    library.create_worksheet("Empty")
+
+    data = library.read_worksheet(header=False)
+    assert data == []
+
+    data_header = library.read_worksheet(header=True)
+    assert data_header == []
+
+    table = library.read_worksheet_as_table(header=False)
+    assert table.dimensions == (0, 0)
+
+    table_header = library.read_worksheet_as_table(header=True)
+    assert table_header.dimensions == (0, 0)
 
 
 def test_append_to_worksheet_headers(library):
