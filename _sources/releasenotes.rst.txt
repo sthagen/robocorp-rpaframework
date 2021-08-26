@@ -1,6 +1,54 @@
 Release notes
 =============
 
+10.9.3
+------
+
+- Library **RPA.Excel.Files**:
+
+  - Return empty list when reading empty worksheet (:issue:`203`)
+  - Correctly handle header names with non-string values
+
+10.9.2
+------
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Fix ``List Messages`` error not returning matching emails
+  - Fix marking emails as SEEN when using ``List Messages`` or ``Wait For Message``
+  - Add ``encoding`` library initialization parameter (default is ``utf-8`` as it used to be)
+  - Add ``readonly`` parameter to keywords ``List Messages`` (True), ``Wait For Message`` (True) and ``Select Folder`` (False).
+    Default values are in the parenthesis.
+
+10.9.0
+------
+
+- Library **RPA.Desktop.Windows**: Add COMError protection to keyword ``Open From Search``
+- Library **RPA.Email.ImapSmtp**: Fix possible `None` error when reading email body
+- Library **RPA.Database**: Fix typo in ibm_db connection
+- Library **RPA.JavaAccessBridge**:
+
+  - Add new library init parameters: ``ignore_callbacks`` and ``access_bridge_path``
+  - Bump java-access-bridge-wrapper version to 0.7.4
+
+10.8.0
+------
+
+- Library **RPA.HTTP**:
+
+  - Fix downloading of big files
+  - Bump robotframework-requests version to 0.9.1
+
+10.7.1
+------
+
+- Bump robotframework-pythonlibcore version to 3.0.0
+
+10.6.0
+------
+
+- Library **RPA.Email.Exchange**: Add keyword ``Save Message`` to save message in EML format
+
 10.5.0
 ------
 
