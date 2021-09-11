@@ -139,12 +139,13 @@ class JSON:
         self.logger = logging.getLogger(__name__)
 
     @keyword("Load JSON from file")
-    def load_json_from_file(self, filename: str) -> JSONType:
+    def load_json_from_file(self, filename: str, encoding="utf-8") -> JSONType:
         """Load JSON data from a file, and return it as JSON serializable object.
         Depending on the input file the object can be either a dictionary,
         a list, or a scalar value.
 
         :param filename: path to input file
+        :param encoding: file character encoding
 
         Example:
 
@@ -155,16 +156,20 @@ class JSON:
 
         """
         self.logger.info("Loading JSON from file: %s", filename)
-        with open(filename) as json_file:
+        with open(filename, "r", encoding=encoding) as json_file:
             return json.load(json_file)
 
     @keyword("Save JSON to file")
-    def save_json_to_file(self, doc: JSONType, filename: str, indent: int = None):
+    def save_json_to_file(
+        self, doc: JSONType, filename: str, indent: int = None, encoding="utf-8"
+    ):
         """Save a JSON serializable object or a string containg
         a JSON value into a file.
 
         :param doc: JSON serializable object or string
         :param filename: path to output file
+        :param indent: if given this value is used for json file indent
+        :param encoding: file character encoding
 
         Example:
 
@@ -184,7 +189,7 @@ class JSON:
         if indent:
             extra_args["indent"] = indent
         doc = self.convert_string_to_json(doc) if isinstance(doc, str) else doc
-        with open(filename, "w") as outfile:
+        with open(filename, "w", encoding=encoding) as outfile:
             json.dump(doc, outfile, **extra_args)
 
     @keyword("Convert JSON to String")
@@ -238,7 +243,8 @@ class JSON:
 
            # Change the name value for all people
            &{before}=    Convert string to JSON   {"People": [{"Name": "Mark"}, {"Name": "Jane"}]}
-           &{after}=     Add to JSON    ${json}   $.People.name    JohnMalkovich
+           &{person}=    Create dictionary      Name=John
+           &{after}=     Add to JSON    ${before}   $.People    ${person}
 
         """  # noqa: E501
         self.logger.info('Add to JSON with expression: "%s"', expr)
@@ -266,7 +272,7 @@ class JSON:
 
            # Get the name value for the first person
            &{people}=    Convert string to JSON   {"People": [{"Name": "Mark"}, {"Name": "Jane"}]}
-           ${first}=     Get value from JSON      ${people}   $.People[0].name
+           ${first}=     Get value from JSON      ${people}   $.People[0].Name
 
         """  # noqa: E501
         self.logger.info('Get value from JSON with expression: "%s"', expr)
@@ -295,7 +301,7 @@ class JSON:
 
            # Get all the names for all people
            &{people}=    Convert string to JSON   {"People": [{"Name": "Mark"}, {"Name": "Jane"}]}
-           @{names}=     Get values from JSON     ${people}   $.People[*].name
+           @{names}=     Get values from JSON     ${people}   $.People[*].Name
 
         """  # noqa: E501
         self.logger.info('Get values from JSON with expression: "%s"', expr)
@@ -316,7 +322,7 @@ class JSON:
 
            # Change the name key for all people
            &{before}=    Convert string to JSON   {"People": [{"Name": "Mark"}, {"Name": "Jane"}]}
-           &{after}=     Update value to JSON     ${json}   $.People[*].name    JohnMalkovich
+           &{after}=     Update value to JSON     ${before}   $.People[*].Name    JohnMalkovich
 
         """  # noqa: E501
         self.logger.info('Update JSON with expression: "%s"', expr)
@@ -342,13 +348,9 @@ class JSON:
 
            # Delete all people
            &{before}=    Convert string to JSON   {"People": [{"Name": "Mark"}, {"Name": "Jane"}]}
-           &{after}=     Delete from JSON    ${json}   $.People[*]
+           &{after}=     Delete from JSON    ${before}   $.People[*]
+
         """  # noqa: E501
         self.logger.info('Delete from JSON with expression: "%s"', expr)
-        for match in parse(expr).find(doc):
-            path = match.path
-            if isinstance(path, Index):
-                del match.context.value[match.path.index]
-            elif isinstance(path, Fields):
-                del match.context.value[match.path.fields[0]]
+        parse(expr).filter(lambda _: True, doc)
         return doc

@@ -17,7 +17,7 @@ except ImportError:
 from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
 
 from RPA.Cloud.objects import TextractDocument
-from RPA.Robocloud.Secrets import Secrets
+from RPA.Robocorp.Vault import Vault
 from RPA.RobotLogListener import RobotLogListener
 from RPA.Tables import Tables
 from RPA.core.helpers import required_param, required_env
@@ -80,7 +80,7 @@ class AWSBase:
         if region is None:
             region = self.region
         if use_robocloud_vault:
-            vault = Secrets()
+            vault = Vault()
             vault_items = vault.get_secret(self.robocloud_vault_name)
             vault_items = {k.upper(): v for (k, v) in vault_items.items()}
             aws_key_id = vault_items["AWS_KEY_ID"]
@@ -401,7 +401,7 @@ class ServiceTextract(AWSBase):
         self.pages = response["DocumentMetadata"]["Pages"]
         self._parse_response_blocks(response)
         if json_file:
-            with open(json_file, "w") as f:
+            with open(json_file, "w", encoding="utf-8") as f:
                 json.dump(response, f)
         return self.convert_textract_response_to_model(response) if model else response
 
@@ -509,7 +509,7 @@ class ServiceTextract(AWSBase):
                 )
         self._parse_response_blocks(response)
         if json_file:
-            with open(json_file, "w") as f:
+            with open(json_file, "w", encoding="utf-8") as f:
                 json.dump(response, f)
         return response
 
@@ -828,7 +828,7 @@ class ServiceSQS(AWSBase):
         required_param(message, "send_message")
         client = self._get_client_for_service("sqs")
         if message_attributes is None:
-            message_attributes = dict()
+            message_attributes = {}
         response = client.send_message(
             QueueUrl=self.queue_url,
             DelaySeconds=10,

@@ -104,8 +104,9 @@ class ImapSmtp:
     **Robot Framework**
 
     It is highly recommended to secure your passwords and take care
-    that they are not stored in the version control by mistake.
-    See ``RPA.Robocloud.Secrets`` how to store RPA Secrets into Robocloud.
+    that they are not stored in version control by mistake.
+    See ``RPA.Robocorp.Vault`` to see how to store secrets in
+    Robocorp Vault.
 
     When sending HTML content with IMG tags, the ``src`` filenames must match
     the base image name given with the ``images`` parameter.
@@ -526,16 +527,10 @@ class ImapSmtp:
                     continue
 
                 charset = part.get_content_charset()
-
                 if part.get_content_type() == "text/plain":
-                    text = str(
-                        part.get_payload(decode=True), str(charset), "ignore"
-                    ).encode(self.encoding, "replace")
-
+                    text = str(part.get_payload(decode=True), str(charset), "ignore")
                 if part.get_content_type() == "text/html":
-                    html = str(
-                        part.get_payload(decode=True), str(charset), "ignore"
-                    ).encode(self.encoding, "replace")
+                    html = str(part.get_payload(decode=True), str(charset), "ignore")
 
             if text:
                 return (
@@ -551,7 +546,7 @@ class ImapSmtp:
                 message.get_payload(decode=True),
                 content_charset or self.encoding,
                 "ignore",
-            ).encode(self.encoding, "replace")
+            )
             return text.strip(), has_attachments
 
     @imap_connection
@@ -569,6 +564,7 @@ class ImapSmtp:
         selected_folder = source_folder or self.selected_folder
         folders = self.get_folder_list(subdirectory=selected_folder)
         result = {"actions_done": 0, "message_count": 0, "ids": [], "uids": {}}
+
         for f in folders:
             if "Noselect" in f["flags"]:
                 continue
@@ -589,7 +585,27 @@ class ImapSmtp:
         return result
 
     def _search_message(self, criterion, actions, limit, result):
-        status, data = self.imap_conn.search(None, "(" + criterion + ")")
+        search_encoding = None
+        search_command = "(%s)" % criterion
+        literal_search = criterion.startswith("literal:")
+        gmail_search = criterion.startswith("gmail:")
+        if literal_search:
+            search_encoding = "utf-8"
+            search_term = criterion.replace("literal:", "")
+            search_command, search_literal = search_term.split(" ", 1)
+
+            self.imap_conn.literal = b"%s" % search_literal.encode("utf-8")
+        elif gmail_search:
+            search_encoding = "utf-8"
+            search_command = "X-GM-RAW"
+            self.imap_conn.literal = b"%s" % criterion.replace("gmail:", "").encode(
+                "utf-8"
+            )
+        try:
+            status, data = self.imap_conn.search(search_encoding, search_command)
+        except Exception as err:  # pylint: disable=broad-except
+            self.logger.warning("Email search returned: %s", str(err))
+            return
         if status == "OK":
             mail_id_data = bytes.decode(data[0])
             mail_ids = mail_id_data.split() if len(mail_id_data) > 0 else []
@@ -602,6 +618,7 @@ class ImapSmtp:
                     mail_uid, message = self._fetch_uid_and_body(mail_id, actions)
                     if mail_uid is None or mail_uid in result["uids"].keys():
                         continue
+                    message["uid"] = mail_uid
                     result["uids"][mail_uid] = message
 
     def _perform_actions(
@@ -727,6 +744,8 @@ class ImapSmtp:
         :param readonly: set False if you want to mark matching messages as read
         :return: list of messages
 
+        *Note.* listing messages without `source_folder` might take a long time
+
         Example:
 
         .. code-block:: robotframework
@@ -739,6 +758,7 @@ class ImapSmtp:
                 Log  ${email}[Delivered-To]
                 Log  ${email}[Received]
                 Log  ${email}[Has-Attachments]
+                Log  ${email}[uid]
             END
         """
         self.logger.info("List messages: %s", criterion)
@@ -766,7 +786,7 @@ class ImapSmtp:
         self, criterion: str = "", target_folder: str = None, overwrite: bool = False
     ) -> Any:
         # pylint: disable=C0301
-        """Save mail attachments into local folder.
+        """Save mail attachments of emails matching criterion into local folder.
 
         :param criterion: attachments are saved for mails matching this, defaults to ""
         :param target_folder: local folder for saving attachments to (needs to exist),
@@ -793,7 +813,7 @@ class ImapSmtp:
         self, message: Union[dict, Message], target_folder: str, overwrite: bool
     ):
         # pylint: disable=C0301
-        """Save mail attachment into local folder
+        """Save mail attachment of single given email into local folder
 
         :param message: message item
         :param target_folder: local folder for saving attachments to (needs to exist),
@@ -821,7 +841,7 @@ class ImapSmtp:
             content_maintype = part.get_content_maintype()
             content_disposition = part.get("Content-Disposition")
             if content_maintype != "multipart" and content_disposition is not None:
-                filename = part.get_filename()
+                filename = part.get_filename().replace("\r", "").replace("\n", "")
                 if filename:
                     transfer_encoding = part.get_all("Content-Transfer-Encoding")
                     if transfer_encoding and transfer_encoding[0] == "base64":
@@ -832,13 +852,20 @@ class ImapSmtp:
                             )
                     filepath = Path(target_folder) / Path(filename).name
                     if not filepath.exists() or overwrite:
-                        self.logger.info(
-                            "Saving attachment: %s",
-                            filename,
-                        )
-                        with open(filepath, "wb") as f:
-                            f.write(part.get_payload(decode=True))
-                            attachments_saved.append(str(filepath))
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            self.logger.info(
+                                "Saving attachment: %s",
+                                filename,
+                            )
+                            with open(filepath, "wb") as f:
+                                f.write(payload)
+                                attachments_saved.append(str(filepath))
+                        else:
+                            self.logger.debug(
+                                "Attachment '%s' did not have payload to write",
+                                filename,
+                            )
                     elif filepath.exists() and not overwrite:
                         self.logger.warning("Did not overwrite file: %s", filepath)
         return attachments_saved
@@ -889,6 +916,8 @@ class ImapSmtp:
         return []
 
     def _parse_folders(self, folders):
+        if folders and len(folders) == 1 and folders[0] is None:
+            return []
         parsed_folders = []
         folder_regex = r'\((?P<flags>.*)\)\s"(?P<delimiter>.*)"\s"?(?P<name>[^"]*)"?'
         for f in folders:

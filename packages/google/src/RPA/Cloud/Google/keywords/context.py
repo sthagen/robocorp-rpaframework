@@ -10,16 +10,6 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account as oauth_service_account
 
-try:
-    from robot.libraries.BuiltIn import BuiltIn
-except ModuleNotFoundError:
-    BuiltIn = None
-
-try:
-    from RPA.Robocloud.Secrets import Secrets  # pylint: disable=no-name-in-module
-except ModuleNotFoundError:
-    Secrets = None
-
 
 class ElementNotFound(ValueError):
     """No matching elements were found."""
@@ -68,25 +58,22 @@ class LibraryContext:
         return self.ctx.cloud_auth_type
 
     def get_secret_from_robocorp_vault(self, secret_type="serviceaccount"):
-        secret_library = Secrets
-        try:
-            if secret_library is None and BuiltIn:
-                secret_library = BuiltIn().get_library_instance("RPA.Robocloud.Secrets")
-        except RuntimeError as runtime_error:
-            raise KeyError(
-                "RPA.Robocloud.Secrets library is required use Vault"
-            ) from runtime_error
-        temp_filedesc = None
+        if self.ctx.secrets_library is None:
+            raise KeyError("RPA.Robocorp.Vault library is required to use Vault")
+
         if (
             self.ctx.robocorp_vault_name is None
             or self.ctx.robocorp_vault_secret_key is None
         ):
             raise KeyError(
                 "Both 'robocorp_vault_name' and 'robocorp_vault_secret_key' "
-                "are required to access Robocloud Vault. Set them in library "
+                "are required to access Robocorp Vault. Set them in library "
                 "init or with `set_robocloud_vault` keyword."
             )
-        vault_items = secret_library().get_secret(self.ctx.robocorp_vault_name)
+
+        vault_items = self.ctx.secrets_library().get_secret(
+            self.ctx.robocorp_vault_name
+        )
         secret = vault_items[self.ctx.robocorp_vault_secret_key]
         if secret_type == "serviceaccount":
             secret_obj = (
@@ -94,8 +81,7 @@ class LibraryContext:
             )
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_filedesc:
                 json.dump(secret_obj, temp_filedesc, ensure_ascii=False)
-
-            return temp_filedesc.name
+                return temp_filedesc.name
         else:
             return secret
 
@@ -213,7 +199,7 @@ class LibraryContext:
 
     def write_json(self, json_file, response):
         if json_file and response:
-            with open(json_file, "w") as f:
+            with open(json_file, "w") as f:  # pylint: disable=unspecified-encoding
                 f.write(response.__class__.to_json(response))
 
     def get_credentials_with_oauth_token(
@@ -226,7 +212,9 @@ class LibraryContext:
         else:
             token_file_location = Path(token_file).absolute()
             if os.path.exists(token_file_location):
-                with open(token_file_location, "r") as token:
+                with open(  # pylint: disable=unspecified-encoding
+                    token_file_location, "r"
+                ) as token:
                     credentials = pickle.loads(base64.b64decode(token.read()))
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
@@ -284,7 +272,7 @@ class LibraryContext:
         if cloud_auth_type == "serviceaccount":
             try:
                 self.logger.info(
-                    "Authenticating with service account file from Robocloud"
+                    "Authenticating with service account file from Robocorp Vault"
                 )
                 service_account_file = self.get_secret_from_robocorp_vault(
                     "serviceaccount"
@@ -294,7 +282,7 @@ class LibraryContext:
                 if service_account_file:
                     os.remove(service_account_file)
         else:
-            self.logger.info("Authenticating with oauth token file from Robocloud")
+            self.logger.info("Authenticating with oauth token file from Robocorp Vault")
             token = self.get_secret_from_robocorp_vault("token")
             credentials = pickle.loads(base64.b64decode(token))
             service = client_object(credentials=credentials)
