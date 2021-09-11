@@ -1,6 +1,67 @@
 Release notes
 =============
 
+Upcoming release
+----------------
+
+11.1.2
+------
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Remove newline and carriage return chars from attachment filenames
+  - Fix problem with saving attachments which do not have payload
+
+11.1.1
+------
+
+- Library **RPA.Robocorp.WorkItems**: Ensure file-based database has at least one item
+- Library **RPA.Tables**: Fix reversed sort ordering
+- Library **RPA.Windows**: Fix internal argument for ``Screenshot`` keyword
+- Library **RPA.JSON**: Fix docstring examples
+
+11.1.0
+------
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Add support for IMAP literal search
+  - Add support for Gmail advanced search
+
+11.0.0
+------
+
+- Terminology fixes for Robocorp Control Room
+- Renamed library **RPA.Robocloud.Items** to **RPA.Robocorp.WorkItems**:
+
+  - Previous import works as before, with deprecation warning
+  - Removed keywords ``Load work item`` and ``Load work item from environment``
+  - Added keywords ``Get input work item`` and ``Create output work item``
+  - Added support for variables and home directory in local database path
+  - Changed local work items format
+
+- Renamed library **RPA.Robocloud.Secrets** to **RPA.Robocorp.Vault**:
+
+  - Previous import works as before, with deprecation warning
+  - Added support for variables and home directory in local vault path
+
+- Library **RPA.Email.ImapSmtp**:
+
+  - Add `uid` into email dictionary
+  - Fix email body decoding
+  - Fix folder list problem when requesting non-existing folder
+
+- Library **RPA.PDF**:
+
+  - Handle missing document information
+  - Always create output directory when writing to disk
+
+- Library **RPA.Windows**: Fix exception from empty parent attribute
+- Library **RPA.Images**:
+
+  - Deprecate screenshot keywords, use ``rpaframework-recognition`` for template matching
+  - Use the library **RPA.Desktop** for image-based automation going forward
+
 10.9.3
 ------
 

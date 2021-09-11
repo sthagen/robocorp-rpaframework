@@ -133,8 +133,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../notifier/index.html">Notifier</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../outlook_application/index.html">Outlook.Application</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pdf/index.html">PDF</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../robocloud_items/index.html">Robocloud.Items</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../robocloud_secrets/index.html">Robocloud.Secrets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robocorp_vault/index.html">Robocorp.Vault</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robocorp_workitems/index.html">Robocorp.WorkItems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../robotloglistener/index.html">RobotLogListener</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../salesforce/index.html">Salesforce</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../sap/index.html">SAP</a></li>
@@ -299,8 +299,9 @@
 <p><strong>Examples</strong></p>
 <p><strong>Robot Framework</strong></p>
 <p>It is highly recommended to secure your passwords and take care
-that they are not stored in the version control by mistake.
-See <code class="docutils literal notranslate"><span class="pre">RPA.Robocloud.Secrets</span></code> how to store RPA Secrets into Robocloud.</p>
+that they are not stored in version control by mistake.
+See <code class="docutils literal notranslate"><span class="pre">RPA.Robocorp.Vault</span></code> to see how to store secrets in
+Robocorp Vault.</p>
 <p>When sending HTML content with IMG tags, the <code class="docutils literal notranslate"><span class="pre">src</span></code> filenames must match
 the base image name given with the <code class="docutils literal notranslate"><span class="pre">images</span></code> parameter.</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="gh">*** Settings ***</span><span class="p"></span>
@@ -646,6 +647,7 @@ source folder</p>
 <dd class="field-even"><p>list of messages</p>
 </dd>
 </dl>
+<p><em>Note.</em> listing messages without <cite>source_folder</cite> might take a long time</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c">@{emails}</span><span class="p">  </span><span class="c">List Messages</span><span class="p">  </span><span class="c">SUBJECT &quot;rpa task&quot;</span><span class="p"></span>
 <span class="c">FOR</span><span class="p">  </span><span class="c">${email}</span><span class="p">  </span><span class="c">IN</span><span class="p">  </span><span class="c">@{EMAILS}</span><span class="p"></span>
@@ -655,6 +657,7 @@ source folder</p>
 <span class="p">    </span><span class="c">Log</span><span class="p">  </span><span class="c">${email}[Delivered-To]</span><span class="p"></span>
 <span class="p">    </span><span class="c">Log</span><span class="p">  </span><span class="c">${email}[Received]</span><span class="p"></span>
 <span class="p">    </span><span class="c">Log</span><span class="p">  </span><span class="c">${email}[Has-Attachments]</span><span class="p"></span>
+<span class="p">    </span><span class="c">Log</span><span class="p">  </span><span class="c">${email}[uid]</span><span class="p"></span>
 <span class="c">END</span><span class="p"></span>
 </pre></div>
 </div>
@@ -774,7 +777,7 @@ source folder</p>
 <dl class="method">
 <dt id="RPA.Email.ImapSmtp.ImapSmtp.save_attachment">
 <code class="sig-name descname">save_attachment</code><span class="sig-paren">(</span><em class="sig-param">message: Union[dict, email.message.Message], target_folder: str, overwrite: bool</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Email.ImapSmtp.ImapSmtp.save_attachment" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save mail attachment into local folder</p>
+<dd><p>Save mail attachment of single given email into local folder</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -798,7 +801,7 @@ defaults to user’s home directory if None</p></li>
 <dl class="method">
 <dt id="RPA.Email.ImapSmtp.ImapSmtp.save_attachments">
 <code class="sig-name descname">save_attachments</code><span class="sig-paren">(</span><em class="sig-param">criterion: str = ''</em>, <em class="sig-param">target_folder: str = None</em>, <em class="sig-param">overwrite: bool = False</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Email.ImapSmtp.ImapSmtp.save_attachments" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save mail attachments into local folder.</p>
+<dd><p>Save mail attachments of emails matching criterion into local folder.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">

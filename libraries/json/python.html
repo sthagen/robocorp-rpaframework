@@ -133,8 +133,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../notifier/index.html">Notifier</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../outlook_application/index.html">Outlook.Application</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pdf/index.html">PDF</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../robocloud_items/index.html">Robocloud.Items</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../robocloud_secrets/index.html">Robocloud.Secrets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robocorp_vault/index.html">Robocorp.Vault</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robocorp_workitems/index.html">Robocorp.WorkItems</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../robotloglistener/index.html">RobotLogListener</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../salesforce/index.html">Salesforce</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../sap/index.html">SAP</a></li>
@@ -395,7 +395,8 @@ If the target is a dict, the keys are either added or updated.</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Change the name value for all people</span>
 <span class="c">&amp;{before}=</span><span class="p">    </span><span class="c">Convert string to JSON</span><span class="p">   </span><span class="c">{&quot;People&quot;: [{&quot;Name&quot;: &quot;Mark&quot;}, {&quot;Name&quot;: &quot;Jane&quot;}]}</span><span class="p"></span>
-<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Add to JSON</span><span class="p">    </span><span class="c">${json}</span><span class="p">   </span><span class="c">$.People.name</span><span class="p">    </span><span class="c">JohnMalkovich</span><span class="p"></span>
+<span class="c">&amp;{person}=</span><span class="p">    </span><span class="c">Create dictionary</span><span class="p">      </span><span class="c">Name=John</span><span class="p"></span>
+<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Add to JSON</span><span class="p">    </span><span class="c">${before}</span><span class="p">   </span><span class="c">$.People</span><span class="p">    </span><span class="c">${person}</span><span class="p"></span>
 </pre></div>
 </div>
 </dd></dl>
@@ -450,7 +451,7 @@ Will delete all values that match the expression.</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Delete all people</span>
 <span class="c">&amp;{before}=</span><span class="p">    </span><span class="c">Convert string to JSON</span><span class="p">   </span><span class="c">{&quot;People&quot;: [{&quot;Name&quot;: &quot;Mark&quot;}, {&quot;Name&quot;: &quot;Jane&quot;}]}</span><span class="p"></span>
-<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Delete from JSON</span><span class="p">    </span><span class="c">${json}</span><span class="p">   </span><span class="c">$.People[*]</span><span class="p"></span>
+<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Delete from JSON</span><span class="p">    </span><span class="c">${before}</span><span class="p">   </span><span class="c">$.People[*]</span><span class="p"></span>
 </pre></div>
 </div>
 </dd></dl>
@@ -473,7 +474,7 @@ were no matches.</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Get the name value for the first person</span>
 <span class="c">&amp;{people}=</span><span class="p">    </span><span class="c">Convert string to JSON</span><span class="p">   </span><span class="c">{&quot;People&quot;: [{&quot;Name&quot;: &quot;Mark&quot;}, {&quot;Name&quot;: &quot;Jane&quot;}]}</span><span class="p"></span>
-<span class="c">${first}=</span><span class="p">     </span><span class="c">Get value from JSON</span><span class="p">      </span><span class="c">${people}</span><span class="p">   </span><span class="c">$.People[0].name</span><span class="p"></span>
+<span class="c">${first}=</span><span class="p">     </span><span class="c">Get value from JSON</span><span class="p">      </span><span class="c">${people}</span><span class="p">   </span><span class="c">$.People[0].Name</span><span class="p"></span>
 </pre></div>
 </div>
 </dd></dl>
@@ -493,20 +494,23 @@ were no matches.</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Get all the names for all people</span>
 <span class="c">&amp;{people}=</span><span class="p">    </span><span class="c">Convert string to JSON</span><span class="p">   </span><span class="c">{&quot;People&quot;: [{&quot;Name&quot;: &quot;Mark&quot;}, {&quot;Name&quot;: &quot;Jane&quot;}]}</span><span class="p"></span>
-<span class="c">@{names}=</span><span class="p">     </span><span class="c">Get values from JSON</span><span class="p">     </span><span class="c">${people}</span><span class="p">   </span><span class="c">$.People[*].name</span><span class="p"></span>
+<span class="c">@{names}=</span><span class="p">     </span><span class="c">Get values from JSON</span><span class="p">     </span><span class="c">${people}</span><span class="p">   </span><span class="c">$.People[*].Name</span><span class="p"></span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.JSON.JSON.load_json_from_file">
-<code class="sig-name descname">load_json_from_file</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em><span class="sig-paren">)</span> &#x2192; Union[Dict[str, Any], List[Any], str, int, float, bool, None]<a class="headerlink" href="#RPA.JSON.JSON.load_json_from_file" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">load_json_from_file</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em>, <em class="sig-param">encoding='utf-8'</em><span class="sig-paren">)</span> &#x2192; Union[Dict[str, Any], List[Any], str, int, float, bool, None]<a class="headerlink" href="#RPA.JSON.JSON.load_json_from_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load JSON data from a file, and return it as JSON serializable object.
 Depending on the input file the object can be either a dictionary,
 a list, or a scalar value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>filename</strong> – path to input file</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> – path to input file</p></li>
+<li><p><strong>encoding</strong> – file character encoding</p></li>
+</ul>
 </dd>
 </dl>
 <p>Example:</p>
@@ -518,7 +522,7 @@ a list, or a scalar value.</p>
 
 <dl class="method">
 <dt id="RPA.JSON.JSON.save_json_to_file">
-<code class="sig-name descname">save_json_to_file</code><span class="sig-paren">(</span><em class="sig-param">doc: Union[Dict[str, Any], List[Any], str, int, float, bool, None], filename: str, indent: int = None</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.JSON.JSON.save_json_to_file" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">save_json_to_file</code><span class="sig-paren">(</span><em class="sig-param">doc: Union[Dict[str, Any], List[Any], str, int, float, bool, None], filename: str, indent: int = None, encoding='utf-8'</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.JSON.JSON.save_json_to_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save a JSON serializable object or a string containg
 a JSON value into a file.</p>
 <dl class="field-list simple">
@@ -526,6 +530,8 @@ a JSON value into a file.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>doc</strong> – JSON serializable object or string</p></li>
 <li><p><strong>filename</strong> – path to output file</p></li>
+<li><p><strong>indent</strong> – if given this value is used for json file indent</p></li>
+<li><p><strong>encoding</strong> – file character encoding</p></li>
 </ul>
 </dd>
 </dl>
@@ -558,7 +564,7 @@ Will change all values that match the expression.</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c"># Change the name key for all people</span>
 <span class="c">&amp;{before}=</span><span class="p">    </span><span class="c">Convert string to JSON</span><span class="p">   </span><span class="c">{&quot;People&quot;: [{&quot;Name&quot;: &quot;Mark&quot;}, {&quot;Name&quot;: &quot;Jane&quot;}]}</span><span class="p"></span>
-<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Update value to JSON</span><span class="p">     </span><span class="c">${json}</span><span class="p">   </span><span class="c">$.People[*].name</span><span class="p">    </span><span class="c">JohnMalkovich</span><span class="p"></span>
+<span class="c">&amp;{after}=</span><span class="p">     </span><span class="c">Update value to JSON</span><span class="p">     </span><span class="c">${before}</span><span class="p">   </span><span class="c">$.People[*].Name</span><span class="p">    </span><span class="c">JohnMalkovich</span><span class="p"></span>
 </pre></div>
 </div>
 </dd></dl>
