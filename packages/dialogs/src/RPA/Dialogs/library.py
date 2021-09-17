@@ -1,9 +1,8 @@
 import atexit
-import base64
 import glob
 import logging
-import mimetypes
 import time
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any, Generator
 
@@ -295,25 +294,9 @@ class Dialogs:
             Add submit buttons    Continue
             Run dialog
         """
-        try:
-            is_file = Path(url_or_path).is_file()
-        except OSError:
-            is_file = False
-
-        if is_file:
-            # Serve local files as data-uri, since the webview component
-            # most likely can't serve the file directly
-            mime, _ = mimetypes.guess_type(url_or_path)
-            with open(url_or_path, "rb") as fd:
-                data = base64.b64encode(fd.read()).decode()
-                value = f"data:{mime};base64,{data}"
-        else:
-            # Assume image is a remote URL, which can be used as-is
-            value = url_or_path
-
         element = {
             "type": "image",
-            "value": str(value),
+            "value": str(url_or_path),
             "width": optional_int(width),
             "height": optional_int(height),
         }
@@ -694,6 +677,55 @@ class Dialogs:
             "label": optional_str(label),
         }
 
+        self.add_element(element)
+
+    @keyword("Add Date Input", tags=["input"])
+    def add_date_input(
+        self,
+        name: str,
+        default: Optional[Union[date, str]] = None,
+    ) -> None:
+        """Add a date input element
+
+        :param name:    Name of result field
+        :param default: The default date
+
+        Displays a date input widget. The selection the user makes will be available
+        as a ``date`` object in the ``name`` field of the result.
+        The ``default`` argument can be a pre-set date as object or string in
+        DD/MM/YYYY format, otherwise the current date is used.
+
+        Example:
+
+        .. code-block:: robotframework
+
+            Add heading       Enter your birthdate
+            Add Date Input    birthdate    default=26/04/1993
+            ${result} =       Run dialog
+            Log To Console    User birthdate year should be: ${result.birthdate.year}
+        """
+
+        # TODO(cmin764): Be flexible on date formats. (provide it as parameter)
+        py_date_format = "%d/%m/%Y"
+        js_date_format = "dd/MM/yyyy"
+        default = default or datetime.utcnow().date()
+        if isinstance(default, date):  # recognizes both `date` and `datetime`
+            default = default.strftime(py_date_format)
+        else:
+            try:
+                datetime.strptime(default, py_date_format)
+            except Exception as exc:
+                raise ValueError(
+                    f"Invalid default date with value {default!r}"
+                ) from exc
+
+        element = {
+            "type": "input-datepicker",
+            "name": str(name),
+            "_format": py_date_format,
+            "format": js_date_format,
+            "default": optional_str(default),
+        }
         self.add_element(element)
 
     @keyword("Add radio buttons", tags=["input"])

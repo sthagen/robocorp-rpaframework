@@ -4,6 +4,20 @@ Release notes
 Upcoming release
 ----------------
 
+11.2.0
+------
+
+- Library **RPA.Dialogs**: ``Add Date Input`` keyword
+- New library **RPA.Robocorp.Process**: Library support for Control Room Process API
+
+11.1.3
+------
+
+- Library **RPA.Salesforce**:
+
+  - Fix ``Salesforce Query`` result being limited to 250 objects
+  - Add parameter to ``Salesforce Query`` to return result as ``Table``
+
 11.1.2
 ------
 
