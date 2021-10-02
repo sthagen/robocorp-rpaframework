@@ -1,0 +1,74 @@
+
+<rss version="2.0">
+	<channel>
+	<title>Recent updates for rpaframework</title>
+	<link>https://rpaframework.org/releasenotes.html</link>
+	<description>Recent updates to the Python Package Index for rpaframework</description>
+	<language>en</language>
+	<item>
+		<title>Release 8.1.0</title>
+		<link>https://pypi.org/project/rpaframework/8.1.0/</link>
+		<description>- Library &lt;b&gt;RPA.Email.Exchange&lt;/b&gt;:
+&lt;br&gt;      - Add keyword `List Unread Messages`
+&lt;br&gt;      - Add keyword `Move Message`
+&lt;br&gt;</description>
+		<author>rpafw@robocorp.com</author>
+		<pubDate>Thu, 11 Mar 2021 20:50:59 +0200</pubDate>
+		<source url="https://rpaframework.org/releasenotes.html">Release Notes</source>
+	</item>
+	<item>
+		<title>Release 8.0.1</title>
+		<link>https://pypi.org/project/rpaframework/8.0.1/</link>
+		<description>- Library &lt;b&gt;RPA.Browser.Selenium&lt;/b&gt;: Fix webdriver creation on Windows
+&lt;br&gt;</description>
+		<author>rpafw@robocorp.com</author>
+		<pubDate>Thu, 11 Mar 2021 11:35:45 +0200</pubDate>
+		<source url="https://rpaframework.org/releasenotes.html">Release Notes</source>
+	</item>
+	<item>
+		<title>Release 8.0.0</title>
+		<link>https://pypi.org/project/rpaframework/8.0.0/</link>
+		<description>- Library &lt;b&gt;RPA.Browser.Selenium&lt;/b&gt;:
+&lt;br&gt;      - Keyword `Open Available Browser` has the default option &#x27;AUTO&#x27; for
+&lt;br&gt;        arguments `headless` and `download`. See keyword documentation
+&lt;br&gt;        for details.
+&lt;br&gt;      - Webdrivers for Chrome/Chromium and Firefox are automatically matched
+&lt;br&gt;        to the currently installed browser version.
+&lt;br&gt;      - Webdrivers which are still running on Python process exit are closed
+&lt;br&gt;        automatically to prevent hanging subprocesses. (:issue:`94`)
+&lt;br&gt;      - Webdrivers are stored in the user&#x27;s home folder, to speed
+&lt;br&gt;        up browser start-up times between reboots.
+&lt;br&gt;    - Library &lt;b&gt;RPA.PDF&lt;/b&gt;:
+&lt;br&gt;      - Refactor library into a separate package. (:issue:`97`)
+&lt;br&gt;      - Rename keyword `Add Image to PDF` to `Add Watermark Image to PDF`.
+&lt;br&gt;      - Rename `Get Value From Anchor` to `Find Text`.
+&lt;br&gt;      - Rename `Page Rotate` to `Rotate Page`.
+&lt;br&gt;      - Rename `PDF Decrypt` to `Decrypt PDF`.
+&lt;br&gt;      - Rename `PDF Encrypt` to `Encrypt PDF`.
+&lt;br&gt;      - Rename `Update Field Values` to `Save Field Values`.
+&lt;br&gt;      - Rename `Open PDF Document` to `Open PDF`.
+&lt;br&gt;      - Rename `Close PDF Document` to `Close PDF`.
+&lt;br&gt;      - Unify keyword signatures, now keywords can be given an input and output paths.
+&lt;br&gt;        If no input path given, the library assumes a PDF is already opened by some
+&lt;br&gt;        other keyword. If no output path given, the library will output the file
+&lt;br&gt;        to `output/output.pdf`.
+&lt;br&gt;    - Library &lt;b&gt;RPA.Desktop.Windows&lt;/b&gt;:
+&lt;br&gt;      - Keyword `Open File` return type changed from boolean to integer,
+&lt;br&gt;        to indicate the opened application ID
+&lt;br&gt;      - Add `object` key into `Get Window List` return data (allows advanced usage)
+&lt;br&gt;      - Change how field is emptied with `Type Into` parameter `empty_field=True`
+&lt;br&gt;    - Library &lt;b&gt;RPA.Tables&lt;/b&gt;:
+&lt;br&gt;      - Add option to define column name for unknown CSV fields,
+&lt;br&gt;        and warn about header and data mismatch
+&lt;br&gt;      - Correctly handle source data with `NoneType` columns
+&lt;br&gt;    - Library &lt;b&gt;RPA.Word.Application&lt;/b&gt;: Fix saving with Office 2007 and older (:issue:`146`)
+&lt;br&gt;    - Library &lt;b&gt;RPA.Cloud.AWS&lt;/b&gt;:
+&lt;br&gt;      - Add keyword `Convert Textract Response To Model`
+&lt;br&gt;      - Add `model` parameter to Keyword `Analyze Document` for getting modeled response object
+&lt;br&gt;    - Library &lt;b&gt;RPA.Email.ImapSmtp&lt;/b&gt;: Set attachment header correctly (:issue:`148`)
+&lt;br&gt;</description>
+		<author>rpafw@robocorp.com</author>
+		<pubDate>Wed, 10 Mar 2021 21:11:27 +0200</pubDate>
+		<source url="https://rpaframework.org/releasenotes.html">Release Notes</source>
+	</item>	</channel>
+</rss>

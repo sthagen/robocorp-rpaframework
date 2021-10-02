@@ -130,6 +130,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../notifier/index.html">Notifier</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../outlook_application/index.html">Outlook.Application</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../pdf/index.html">PDF</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robocorp_process/index.html">Robocorp.Process</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../robocorp_vault/index.html">Robocorp.Vault</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">Robocorp.WorkItems</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Python API</a></li>
@@ -299,12 +300,17 @@ set self.__traceback__ to tb and return self.</p>
 <p>Adapter for mocking work item input queues.</p>
 <p>Reads inputs from the given database file, and writes
 all created output items into an adjacent file
-with the suffix <code class="docutils literal notranslate"><span class="pre">&lt;filename&gt;.output.json</span></code>.</p>
+with the suffix <code class="docutils literal notranslate"><span class="pre">&lt;filename&gt;.output.json</span></code>. If the output path is provided by an
+env var explicitly, then the file will be saved with the provided path and name.</p>
 <p>Reads and writes all work item files from/to the same parent
 folder as the given input database.</p>
 <p>Required environment variables:</p>
 <ul class="simple">
-<li><p>RPA_WORKITEMS_PATH:   Path to work items database file</p></li>
+<li><p>RPA_INPUT_WORKITEM_PATH:  Path to work items input database file</p></li>
+</ul>
+<p>Optional environment variables:</p>
+<ul class="simple">
+<li><p>RPA_OUTPUT_WORKITEM_PATH:  Path to work items output database file</p></li>
 </ul>
 <dl class="method">
 <dt id="RPA.Robocorp.WorkItems.FileAdapter.add_file">
@@ -346,6 +352,11 @@ folder as the given input database.</p>
 <code class="sig-name descname">load_payload</code><span class="sig-paren">(</span><em class="sig-param">item_id: str</em><span class="sig-paren">)</span> &#x2192; Union[Dict[str, Any], List[Any], str, int, float, bool, None]<a class="headerlink" href="#RPA.Robocorp.WorkItems.FileAdapter.load_payload" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load JSON payload from work item.</p>
 </dd></dl>
+
+<dl class="method">
+<dt id="RPA.Robocorp.WorkItems.FileAdapter.output_path">
+<em class="property">property </em><code class="sig-name descname">output_path</code><a class="headerlink" href="#RPA.Robocorp.WorkItems.FileAdapter.output_path" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="method">
 <dt id="RPA.Robocorp.WorkItems.FileAdapter.remove_file">
@@ -633,6 +644,26 @@ with a custom adapter. The selection is based on either the <code class="docutil
 argument for the library, or the <code class="docutils literal notranslate"><span class="pre">RPA_WORKITEMS_ADAPTER</span></code> environment
 variable. The library has a built-in alternative adapter called FileAdapter for
 storing work items to disk.</p>
+<p>The FileAdapter uses a local JSON file for input work items.
+It’s a list of work items, each of which has a data payload and files.</p>
+<p>An example of a local file with one work item:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+    <span class="p">{</span>
+        <span class="nt">&quot;payload&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;variable1&quot;</span><span class="p">:</span> <span class="s2">&quot;a-string-value&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;variable2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;list&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;files&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;file1&quot;</span><span class="p">:</span> <span class="s2">&quot;path/to/file.ext&quot;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>Output work items (if any) are saved to an adjacent file
+with the same name, but with the extension <code class="docutils literal notranslate"><span class="pre">.output.json</span></code>. You can specify
+through the “RPA_OUTPUT_WORKITEM_PATH” env var a different path and name for this
+file.</p>
 <p><strong>Examples</strong></p>
 <p><strong>Robot Framework</strong></p>
 <p>In the following example a task creates an output work item,

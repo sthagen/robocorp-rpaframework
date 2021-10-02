@@ -4,6 +4,42 @@ Release notes
 Upcoming release
 ----------------
 
+11.3.0
+------
+
+- Library **RPA.Robocorp.Vault**: Supports both .yaml/.json local vault secrets file formats (:issue:`225`)
+- Library **RPA.PDF**: Add possibility to preserve whitespacing in PDF textboxes - :issue:`235`
+- Library **RPA.Robocorp.WorkItems**: New environment variables for work items I/O
+  during local dev ("RPA_INPUT_WORKITEM_PATH", "RPA_OUTPUT_WORKITEM_PATH" - :pr:`234`)
+- Library **RPA.Email.ImapSmtp**:
+
+  - Fix `Move Messages` issue (:issue:`237`)
+  - Add keyword `Move Messages By IDs`
+  - Fix boolean return values for keywords doing definite actions (like Mark As Read, Delete Messages..)
+
+- Library **RPA.Email.Exchange**: Update `exchangelib` dependency to 4.5.1 and pin `tzlocal` dependency to 2.1
+
+11.2.1
+------
+
+- Library **RPA.Robocorp.WorkItems**: Handle payloads with non-ascii characters
+- Library **RPA.Dialogs**: Date ISO format for ``Add Date Input`` keyword
+- Library **RPA.Desktop**: Always write unicode with ``Type text``
+
+11.2.0
+------
+
+- Library **RPA.Dialogs**: ``Add Date Input`` keyword
+- New library **RPA.Robocorp.Process**: Library support for Control Room Process API
+
+11.1.3
+------
+
+- Library **RPA.Salesforce**:
+
+  - Fix ``Salesforce Query`` result being limited to 250 objects
+  - Add parameter to ``Salesforce Query`` to return result as ``Table``
+
 11.1.2
 ------
 
