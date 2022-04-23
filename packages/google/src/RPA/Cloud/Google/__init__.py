@@ -175,7 +175,11 @@ class Google(DynamicCore):
 
     **Installation**
 
-    ``pip install rpaframework-google``
+    This library, ``RPA.Cloud.Google`` is available via **rpaframework-google** package.
+
+    Check the latest package version from `PyPI`_.
+
+    .. _PyPI: https://pypi.org/project/rpaframework-google/
 
     **Examples**
 
@@ -193,9 +197,11 @@ class Google(DynamicCore):
         *** Tasks ***
         Upload a file into a new storage bucket
             [Setup]   Init Storage    ${SERVICE_ACCOUNT}
-            Create Bucket    ${BUCKET_NAME}
-            Upload File      ${BUCKET_NAME}   ${/}path${/}to${/}file.pdf  myfile.pdf
-            @{files}         List Files   ${BUCKET_NAME}
+            Create Storage Bucket    ${BUCKET_NAME}
+            Upload Storage File      ${BUCKET_NAME}
+            ...   ${/}path${/}to${/}file.pdf
+            ...   myfile.pdf
+            @{files}         List Storage Files   ${BUCKET_NAME}
             FOR   ${file}  IN   @{files}
                 Log  ${file}
             END

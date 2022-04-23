@@ -26,26 +26,20 @@ jobs:
       fail-fast: false
       matrix:
         name: [
-          "windows-py36",
           "windows-py37",
           "windows-py38",
           "windows-py39",
 
-          "ubuntu-py36",
           "ubuntu-py37",
           "ubuntu-py38",
           "ubuntu-py39",
 
-          "macos-py36",
           "macos-py37",
           "macos-py38",
           "macos-py39",
         ]
 
         include:
-          - name: "windows-py36"
-            python: "3.6"
-            os: windows-latest
           - name: "windows-py37"
             python: "3.7"
             os: windows-latest
@@ -55,9 +49,6 @@ jobs:
           - name: "windows-py39"
             python: "3.9"
             os: windows-latest
-          - name: "ubuntu-py36"
-            python: "3.6"
-            os: ubuntu-latest
           - name: "ubuntu-py37"
             python: "3.7"
             os: ubuntu-latest
@@ -67,9 +58,6 @@ jobs:
           - name: "ubuntu-py39"
             python: "3.9"
             os: ubuntu-latest
-          - name: "macos-py36"
-            python: "3.6"
-            os: macos-latest
           - name: "macos-py37"
             python: "3.7"
             os: macos-latest
@@ -90,6 +78,8 @@ jobs:
       run: python -m pip install --upgrade pip
     - name: Install poetry
       run: pip install poetry
+    - name: Install invoke
+      run: python -m pip install invoke
     - name: Get python version
       id: full-python-version
       shell: bash
@@ -101,11 +91,11 @@ jobs:
         path: .venv
         key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('poetry.lock') }}
     - name: Install
-      run: make install
+      run: invoke install
     - name: Lint
-      run: make lint
+      run: invoke lint
     - name: Test
-      run: make test
+      run: invoke test
 
   publish:
     # Only publish on master workflow runs
@@ -123,8 +113,10 @@ jobs:
       run: python -m pip install --upgrade pip
     - name: Install poetry
       run: pip install poetry
+    - name: Install invoke
+      run: pip install invoke
     - name: Install dependencies
-      run: make install
+      run: invoke install
     - name: Build and publish package
       if: success()
       run: |

@@ -11,6 +11,10 @@ if platform.system() == "Windows":
     import win32api
     import win32com.client
     import pywintypes
+else:
+    logging.getLogger(__name__).warning(
+        "RPA.Excel.Application library works only on Windows platform"
+    )
 
 
 def _to_unsigned(val):
@@ -38,6 +42,8 @@ def catch_com_error():
 
 class Application:
     """`Excel.Application` is a library for controlling an Excel application.
+
+    *Note*. Library works only Windows platform.
 
     **Examples**
 

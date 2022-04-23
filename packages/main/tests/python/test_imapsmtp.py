@@ -1,10 +1,13 @@
-import pytest
-import mock
-from pathlib import Path
-from RPA.Email.ImapSmtp import ImapSmtp
 from smtplib import SMTP
 
-RESOURCE_DIR = Path(__file__).resolve().parent / ".." / "resources"
+import mock
+import pytest
+from RPA.Email.ImapSmtp import ImapSmtp
+from docx import Document
+
+from . import RESOURCES_DIR
+
+
 SENDMAIL_MOCK = "RPA.Email.ImapSmtp.SMTP.sendmail"
 recipient = "person1@domain.com"
 multi_recipients = "person2@domain.com,person3@domain.com"
@@ -56,7 +59,7 @@ def test_send_message_with_images(mocked, library):
         body="body of the message<img src='approved.png'/>",
         recipients=recipient,
         html=True,
-        images=RESOURCE_DIR / "approved.png",
+        images=RESOURCES_DIR / "approved.png",
     )
     assert status
 
@@ -68,7 +71,7 @@ def test_send_message_with_attachments(mocked, library):
         subject="My test email subject",
         body="body of the message",
         recipients=recipient,
-        attachments=RESOURCE_DIR / "approved.png",
+        attachments=RESOURCES_DIR / "approved.png",
     )
     assert status
 
@@ -80,9 +83,9 @@ def test_send_message_with_attachments_and_images(mocked, library):
         subject="My test email subject",
         body="body of the message",
         recipients=recipient,
-        attachments=RESOURCE_DIR / "approved.png",
+        attachments=RESOURCES_DIR / "approved.png",
         html=True,
-        images=RESOURCE_DIR / "approved.png",
+        images=RESOURCES_DIR / "approved.png",
     )
     assert status
 
@@ -133,3 +136,22 @@ def test_parse_folders_failed(library, caplog):
 
     assert not result
     assert expected_log_text in caplog.text
+
+
+@pytest.mark.parametrize(
+    "input_file,expected_text",
+    [
+        (
+            "work-item-documentation",
+            "Get attached file from work item to disk. Returns the absolute path to the created file.",
+        )
+    ],
+)
+def test_email_to_document(tmp_path, library, input_file, expected_text):
+    input_source = RESOURCES_DIR / "emails" / f"{input_file}.eml"
+    output_source = tmp_path / f"{input_file}.docx"
+    library.email_to_document(input_source, output_source)
+
+    doc = Document(output_source)
+    texts = [para.text for para in doc.paragraphs]
+    assert expected_text in texts

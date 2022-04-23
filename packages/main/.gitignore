@@ -5,6 +5,7 @@ __pycache__/
 # Build artifacts
 dist/
 sdist/
+*.libspec
 
 # Exports
 requirements.txt
@@ -14,6 +15,8 @@ setup.py
 # Unit tests
 .pytest_cache/
 .mypy_cache/
+testvars.py
+*_testvars.py
 
 # Robot Framework
 tests/results

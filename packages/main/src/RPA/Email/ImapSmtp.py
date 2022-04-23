@@ -1,4 +1,3 @@
-import base64
 from enum import Enum
 from functools import wraps
 
@@ -25,10 +24,14 @@ from imaplib import IMAP4_SSL
 from smtplib import SMTP, SMTP_SSL, ssl
 from smtplib import SMTPConnectError, SMTPNotSupportedError, SMTPServerDisconnected
 
-from typing import Any, List, Union
+from typing import Any, BinaryIO, List, Optional, Tuple, Union
 
+from htmldocx import HtmlToDocx
 from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
 from RPA.RobotLogListener import RobotLogListener
+
+
+FilePath = Union[str, Path]
 
 
 class Action(Enum):
@@ -44,6 +47,7 @@ class Action(Enum):
     msg_save = 8
     msg_attachment_save = 9
     msg_move = 10
+    msg_trash = 11
     glabel_add = 20  # Add GMail label
     glabel_remove = 21  # Remove GMail label
 
@@ -60,10 +64,20 @@ def to_action(value):
         raise ValueError(f"Unknown email action: {value}") from err
 
 
+def get_part_filename(msg):
+    filename = msg.get_filename()
+    if filename and decode_header(filename)[0][1] is not None:
+        filename = decode_header(filename)[0][0].decode(decode_header(filename)[0][1])
+    if filename:
+        filename = filename.replace("\r", "").replace("\n", "")
+    return filename
+
+
 IMAGE_FORMATS = ["jpg", "jpeg", "bmp", "png", "gif"]
 FLAG_DELETED = "\\Deleted"
 FLAG_SEEN = "\\Seen"
 FLAG_FLAGGED = "\\Flagged"
+FLAG_TRASH = "\\Trash"
 
 try:
     BuiltIn().import_library("RPA.RobotLogListener")
@@ -94,6 +108,15 @@ def smtp_connection(f):
 class ImapSmtp:
     """`ImapSmtp` is a library for sending, reading, and deleting emails.
     `ImapSmtp` is interfacing with SMTP and IMAP protocols.
+
+    ***About criteria argument***
+
+    Various keywords like ``List Messages`` and ``Move Messages`` have keyword
+    argument called ``criterion`` which can be used to filter emails according
+    to given criteria.
+
+    Syntax needs to according to specification and more information about that
+    can be read from https://robocorp.com/docs/development-guide/email/sending-emails-with-gmail-smtp#listing-email-messages-by-criteria
 
     **Troubleshooting**
 
@@ -361,12 +384,14 @@ class ImapSmtp:
     def send_message(
         self,
         sender: str,
-        recipients: str,
+        recipients: Union[List[str], str],
         subject: str = "",
         body: str = "",
-        attachments: str = None,
+        attachments: Optional[Union[List[str], str]] = None,
         html: bool = False,
-        images: str = None,
+        images: Optional[Union[List[str], str]] = None,
+        cc: Optional[Union[List[str], str]] = None,
+        bcc: Optional[Union[List[str], str]] = None,
     ) -> bool:
         """Send SMTP email
 
@@ -374,9 +399,11 @@ class ImapSmtp:
         :param recipients: who is receiving, ie. 'to'
         :param subject: mail subject field
         :param body: mail body content
-        :param attachments: list of filepaths to attach, defaults to []
+        :param attachments: list of filepaths to attach
         :param html: if message content is in HTML, default `False`
-        :param images: list of filepaths for inline use, defaults to []
+        :param images: list of filepaths for inline images
+        :param cc: list of email addresses for email 'cc' field
+        :param bcc: list of email addresses for email 'bcc' field
 
         Valid sender values:
 
@@ -388,22 +415,31 @@ class ImapSmtp:
         .. code-block:: robotframework
 
             Send Message  sender@domain.com  recipient@domain.com
+            ...           cc=need_to_know@domain.com
+            ...           bcc=hidden_copy@domain.com
             ...           subject=Greetings Software Robot Developer
             ...           body=${email_body}
             ...           attachments=${CURDIR}${/}report.pdf
         """
         add_charset(self.encoding, QP, QP, self.encoding)
-        recipients, attachments, images = self._handle_message_parameters(
+        to, attachments, images = self._handle_message_parameters(
             recipients, attachments, images
         )
         msg = MIMEMultipart()
 
         self._add_attachments_to_msg(attachments, msg)
 
+        sender = sender.encode("idna").decode("ascii")
+        msg_to = ",".join(to).encode("idna").decode("ascii")
         msg["From"] = sender
-        msg["To"] = ",".join(recipients)
+        msg["To"] = msg_to
         msg["Subject"] = Header(subject, self.encoding)
-
+        recipients = to if isinstance(to, list) else [to]
+        if cc:
+            msg["Cc"] = ",".join(cc) if isinstance(cc, list) else cc
+            recipients += cc if isinstance(cc, list) else cc.split(",")
+        if bcc:
+            recipients += bcc if isinstance(bcc, list) else bcc.split(",")
         if html:
             for im in images:
                 im = im.strip()
@@ -433,7 +469,6 @@ class ImapSmtp:
         str_io = StringIO()
         g = Generator(str_io, False)
         g.flatten(msg)
-
         try:
             if self.smtp_conn is None:
                 self.authorize_smtp()
@@ -494,67 +529,68 @@ class ImapSmtp:
             for k, v in message.items():
                 msg_item = decode_header(v)
                 message_dict[k] = make_header(msg_item)
-            message_dict["Body"], has_attachments = self._get_decoded_email_body(
-                message
-            )
+            message_dict["Body"], has_attachments = self.get_decoded_email_body(message)
             message_dict["Has-Attachments"] = has_attachments
             messages.append(message_dict)
         return messages
 
-    def _get_decoded_email_body(self, message):
-        """Decode email body.
+    def get_decoded_email_body(
+        self, message, html_first: bool = False
+    ) -> Tuple[str, bool]:
+        """Decodes email body and extracts its text/html content.
 
-        :param message_body: Raw 7-bit message body input e.g. from imaplib. Double
+        Automatically detects character set if the header is not set.
+
+        :param message: Raw 7-bit message body input e.g. from `imaplib`. Double
             encoded in quoted-printable and latin-1
-        :return: Message body as unicode string and information if message has
-            attachments
-
-        Detect character set if the header is not set.
-        We try to get text/plain, but if there is not one then fallback to text/html.
+        :param html_first: Prioritize html extraction over text when this is True
+        :returns: Message body as unicode string and a boolean telling if the message
+            has attachments
         """
-        text = ""
-        has_attachments = False
-        if message.is_multipart():
-            html = None
-
-            for part in message.walk():
-                # content_maintype = part.get_content_maintype()
-                content_disposition = part.get("Content-Disposition")
-                if content_disposition and "attachment" in content_disposition:
-                    has_attachments = True
-                    continue
-                if part.get_content_charset() is None:
-                    # We cannot know the character set, so return decoded "something"
-                    text = part.get_payload(decode=True)
-                    continue
-
-                charset = part.get_content_charset()
-                if part.get_content_type() == "text/plain":
-                    text = str(part.get_payload(decode=True), str(charset), "ignore")
-                if part.get_content_type() == "text/html":
-                    html = str(part.get_payload(decode=True), str(charset), "ignore")
-
-            if text:
-                return (
-                    (text.strip(), has_attachments) if text else ("", has_attachments)
-                )
-            else:
-                return (
-                    (html.strip(), has_attachments) if html else ("", has_attachments)
-                )
-        else:
+        if not message.is_multipart():
             content_charset = message.get_content_charset()
             text = str(
                 message.get_payload(decode=True),
                 content_charset or self.encoding,
                 "ignore",
             )
-            return text.strip(), has_attachments
+            return text.strip(), False
+
+        text = html = None
+        has_attachments = False
+
+        for part in message.walk():
+            if not part:
+                continue
+            content_filename = get_part_filename(part)
+            if content_filename:
+                has_attachments = True
+                continue
+            content_type = "text/plain"
+            _data = ""
+            content_charset = part.get_content_charset()
+            if content_charset:
+                content_type = part.get_content_type()
+            payload = part.get_payload(decode=True)
+            if payload:
+                _data = str(payload, str(content_charset), "ignore")
+
+            if content_type == "text/plain":
+                text = _data
+            elif content_type == "text/html":
+                html = _data
+
+        if html_first:
+            data = html or text
+        else:
+            data = text or html
+        data = data.strip() if data else ""
+        return data, has_attachments
 
     @imap_connection
     def _do_actions_on_messages(
         self,
-        criterion: str,
+        criterion: Union[str, dict],
         actions: list,
         labels: str = None,
         source_folder: str = None,
@@ -562,16 +598,18 @@ class ImapSmtp:
         limit: int = None,
         overwrite: bool = False,
         readonly: bool = False,
+        prefix: str = "",
     ) -> list:
         selected_folder = source_folder or self.selected_folder
         folders = self.get_folder_list(subdirectory=selected_folder)
         result = {"actions_done": 0, "message_count": 0, "ids": [], "uids": {}}
 
         if source_folder:
-            for f in folders:
-                if "Noselect" in f["flags"]:
+            for folder in folders:
+                if "Noselect" in folder["flags"]:
                     continue
-                self.select_folder(f["name"], readonly)
+                folder_name = folder["name"]
+                self.select_folder(folder_name, readonly)
                 self._search_message(criterion, actions, limit, result)
         else:
             self._search_message(criterion, actions, limit, result)
@@ -591,6 +629,7 @@ class ImapSmtp:
                     labels=labels,
                     target_folder=target_folder,
                     overwrite=overwrite,
+                    prefix=prefix,
                 )
                 if status:
                     result["actions_done"] += 1
@@ -637,7 +676,7 @@ class ImapSmtp:
                 result["message_count"] += len(mail_ids)
                 result["ids"].extend(mail_ids)
                 for mail_id in mail_ids:
-                    mail_uid, message = self._fetch_uid_and_body(mail_id, actions)
+                    mail_uid, message = self._fetch_uid_and_message(mail_id, actions)
                     if mail_uid is None or mail_uid in result["uids"].keys():
                         continue
                     message["uid"] = mail_uid
@@ -647,17 +686,54 @@ class ImapSmtp:
             self.logger.warning("Search result not OK: %s", status)
             return False
 
-    def _perform_actions(
+    def _get_mail_uids_and_dicts(self, mail):
+        mail_uids = []
+        mail_dicts = []
+        if isinstance(mail, list):
+            mail_uids = [m["uid"] for m in mail]
+            mail_dict = None
+            mail_dicts = mail
+        else:
+            try:
+                mail_uid, mail_dict = mail
+                mail_uids = [mail_uid]
+                mail_dicts = [mail_dict]
+            except ValueError:
+                mail_uid = mail["uid"]
+                mail_dict = mail
+                mail_uids = [mail_uid]
+                mail_dicts = [mail]
+        return mail_uids, mail_dicts
+
+    def _command_mail_uid(self, command, uid, m_op="", m_param="", target_folder=None):
+        if target_folder:
+            action_status, _ = self.imap_conn.uid(command, uid, target_folder)
+            self.logger.debug(
+                "%s %s %s RESULT %s", command, uid, target_folder, action_status
+            )
+        else:
+            action_status, _ = self.imap_conn.uid(command, uid, m_op, m_param)
+            self.logger.info(
+                "%s %s %s %s RESULT %s",
+                command,
+                uid,
+                m_op,
+                m_param,
+                action_status,
+            )
+        return action_status
+
+    def _perform_actions(  # noqa: C901 pylint: disable=too-many-branches
         self,
         actions: list,
-        mail: dict,
+        mail: Union[dict, list],
         labels: str = None,
         target_folder: str = None,
         overwrite: bool = False,
+        prefix: str = "",
     ):
         action_status = True
-        mail_uid, mail_dict = mail
-
+        mail_uids, mail_dicts = self._get_mail_uids_and_dicts(mail)
         store_params = {
             Action.glabel_add: ["+X-GM-LABELS", f"({labels})"],
             Action.glabel_remove: ["-X-GM-LABELS", f"({labels})"],
@@ -666,45 +742,61 @@ class ImapSmtp:
             Action.msg_unflag: ["-FLAGS", FLAG_FLAGGED],
             Action.msg_read: ["+FLAGS", FLAG_SEEN],
             Action.msg_unread: ["-FLAGS", FLAG_SEEN],
+            Action.msg_trash: ["+FLAGS", FLAG_TRASH],
         }
-
         for act in actions:
             action = to_action(act)
             if action == Action.msg_list:
                 continue
             if action in store_params.keys():
                 m_op, m_param = store_params[action]
-                action_status, _ = self.imap_conn.uid("STORE", mail_uid, m_op, m_param)
-                self.logger.debug(
-                    "STORE %s %s %s RESULT %s", mail_uid, m_op, m_param, action_status
-                )
+                for uid in mail_uids:
+                    action_status = self._command_mail_uid("STORE", uid, m_op, m_param)
             elif action == Action.msg_copy:
-                action_status, _ = self.imap_conn.uid("COPY", mail_uid, target_folder)
-                self.logger.debug(
-                    "COPY %s %s RESULT %s", mail_uid, target_folder, action_status
-                )
+                for uid in mail_uids:
+                    action_status = self._command_mail_uid(
+                        "COPY", uid, target_folder=target_folder
+                    )
             elif action == Action.msg_move:
-                action_status, _ = self.imap_conn.uid("COPY", mail_uid, target_folder)
                 m_op, m_param = store_params[Action.msg_delete]
-                action_status, _ = self.imap_conn.uid("STORE", mail_uid, m_op, m_param)
-            elif action == Action.msg_save:
+                for uid in mail_uids:
+                    if " " in target_folder:
+                        target_folder = f'"{target_folder}"'
+                    action_status = self._command_mail_uid(
+                        "COPY", uid, target_folder=target_folder
+                    )
+                    action_status = self._command_mail_uid("STORE", uid, m_op, m_param)
+            elif action == Action.msg_save and len(mail_dicts) > 0:
                 if target_folder is None:
                     target_folder = os.path.expanduser("~")
-                self._save_eml_file(mail_dict, target_folder, overwrite)
-            elif action == Action.msg_attachment_save:
+                for mail_dict in mail_dicts:
+                    action_status = self._save_eml_file(
+                        mail_dict, target_folder, overwrite, prefix
+                    )
+            elif action == Action.msg_attachment_save and len(mail_dicts) > 0:
                 if target_folder is None:
                     target_folder = os.path.expanduser("~")
-                self._save_attachment(mail_dict, target_folder, overwrite)
+                for mail_dict in mail_dicts:
+                    self._save_attachment(mail_dict, target_folder, overwrite, prefix)
             else:
                 # TODO: mypy should handle enum exhaustivity validation
-                raise ValueError(f"Unsupported email action: {action}")
+                raise ValueError(
+                    f"Unsupported email action or insufficient input data: {action}"
+                )
         return action_status
 
     @imap_connection
-    def delete_message(self, criterion: str = "") -> bool:
+    def delete_message(
+        self,
+        criterion: Union[str, dict] = None,
+        source_folder: str = None,
+    ) -> bool:
         """Delete single message from server based on criterion.
 
-        :param criterion: filter messages based on this, defaults to ""
+        :param criterion: filter messages based on this search, can also be a
+         message dictionary
+        :param source_folder: defaults to already selected folder, but can be
+         set to delete message in a specific folder
         :return: True if success, False if not
 
         If criterion does not return exactly 1 message then delete is not done.
@@ -715,18 +807,45 @@ class ImapSmtp:
 
             Delete Message  SUBJECT \"Greetings RPA developer\"
         """
-        self._validate_criterion(criterion)
-        result = self._do_actions_on_messages(
-            criterion, actions=[Action.msg_delete], limit=1
-        )
+        selected_folder = source_folder or self.selected_folder
+        if isinstance(criterion, dict):
+            readonly = False
+            self.select_folder(selected_folder, readonly)
+            status = self._perform_actions(
+                [Action.msg_delete],
+                criterion,
+            )
+            result = {
+                "actions_done": 1 if status else 0,
+                "message_count": 1,
+                "ids": [criterion["uid"]],
+                "uids": {criterion["uid"]: criterion},
+            }
+            self.imap_conn.expunge()
+        else:
+            result = self._do_actions_on_messages(
+                criterion,
+                actions=[Action.msg_delete],
+                limit=1,
+                source_folder=selected_folder,
+            )
+            self.imap_conn.expunge()
         return result["actions_done"] == 1
 
     @imap_connection
-    def delete_messages(self, criterion: str = "", limit: int = None) -> bool:
+    def delete_messages(
+        self,
+        criterion: Union[str, list] = None,
+        limit: int = None,
+        source_folder: str = None,
+    ) -> bool:
         """Delete messages from server based on criterion.
 
-        :param criterion: filter messages based on this, defaults to ""
+        :param criterion: filter messages based on this search, can also be a
+         list of message dictionaries
         :param limit: maximum number of message to delete
+        :param source_folder: defaults to already selected folder, but can be
+         set to delete message in a specific folder
         :return: True if success, False if not
 
         Example:
@@ -735,17 +854,35 @@ class ImapSmtp:
 
             Delete Messages  SUBJECT Greetings
         """
-        self._validate_criterion(criterion)
-        result = self._do_actions_on_messages(
-            criterion, actions=[Action.msg_delete], limit=limit
-        )
+        selected_folder = source_folder or self.selected_folder
+        if isinstance(criterion, list):
+            readonly = False
+            self.select_folder(selected_folder, readonly)
+            status = self._perform_actions(
+                [Action.msg_delete],
+                criterion,
+            )
+            self.imap_conn.expunge()
+            return status
+        else:
+            result = self._do_actions_on_messages(
+                criterion,
+                actions=[Action.msg_delete],
+                limit=limit,
+                source_folder=selected_folder,
+            )
         return (
             result["actions_done"] > 0
             and result["actions_done"] == result["message_count"]
         )
 
     @imap_connection
-    def save_messages(self, criterion: str = "", target_folder: str = None) -> bool:
+    def save_messages(
+        self,
+        criterion: Union[str, dict, list] = None,
+        target_folder: str = None,
+        prefix: str = None,
+    ) -> bool:
         # pylint: disable=C0301
         """Save messages based on criteria and store them to target folder
         with attachment files.
@@ -754,6 +891,7 @@ class ImapSmtp:
 
         :param criterion: filter messages based on this, defaults to ""
         :param target_folder: path to folder where message are saved, defaults to None
+        :param prefix: optional filename prefix added to the message file, default empty
         :return: True if success, False if not
 
         Example:
@@ -762,12 +900,21 @@ class ImapSmtp:
 
             Save Messages  SUBJECT Important message  target_folder=${USERDIR}${/}messages
         """  # noqa: E501
-        self._validate_criterion(criterion)
+        prefix = prefix or ""
         if target_folder is None:
             target_folder = os.path.expanduser("~")
-        result = self._do_actions_on_messages(
-            criterion, actions=[Action.msg_save], target_folder=target_folder
-        )
+        if isinstance(criterion, (dict, list)):
+            status = self._perform_actions(
+                [Action.msg_save], criterion, target_folder=target_folder, prefix=prefix
+            )
+            return status
+        else:
+            result = self._do_actions_on_messages(
+                criterion,
+                actions=[Action.msg_save],
+                target_folder=target_folder,
+                prefix=prefix,
+            )
         return (
             result["actions_done"] > 0
             and result["actions_done"] == result["message_count"]
@@ -810,19 +957,24 @@ class ImapSmtp:
         values = result["uids"].values()
         converted = []
         for v in values:
-            converted.append(
-                {
-                    str(key): value
-                    if isinstance(value, (str, bool, int, Message))
-                    else str(value)
-                    for key, value in v.items()
-                }
-            )
+            if v:
+                converted.append(
+                    {
+                        str(key): value
+                        if isinstance(value, (str, bool, int, Message))
+                        else str(value)
+                        for key, value in v.items()
+                    }
+                )
         return converted
 
     @imap_connection
     def save_attachments(
-        self, criterion: str = "", target_folder: str = None, overwrite: bool = False
+        self,
+        criterion: str = "",
+        target_folder: str = None,
+        overwrite: bool = False,
+        prefix: str = None,
     ) -> List:
         # pylint: disable=C0301
         """Save mail attachments of emails matching criterion into local folder.
@@ -831,65 +983,77 @@ class ImapSmtp:
         :param target_folder: local folder for saving attachments to (needs to exist),
             defaults to user's home directory if None
         :param overwrite: overwrite existing file is True, defaults to False
-        :return: list of saved attachments
+        :param prefix: optional filename prefix added to the attachments, default empty
+        :return: list of saved attachments (list of absolute filepaths) of all emails
 
         Example:
 
         .. code-block:: robotframework
 
-            ${numsaved}  Save Attachments   SUBJECT "rpa task"
-            ...          target_folder=${CURDIR}${/}messages  overwrite=True
+            ${attachments}  Save Attachments   SUBJECT "rpa task"
+            ...             target_folder=${CURDIR}${/}messages  overwrite=True
+            FOR  ${a}  IN  @{attachments}
+                OperatingSystem.File Should Exist  ${a}
+            END
         """  # noqa: E501
         attachments_saved = []
+        prefix = prefix or ""
         messages = self.list_messages(criterion)
         for msg in messages:
             attachments_saved.extend(
-                self.save_attachment(msg, target_folder, overwrite)
+                self.save_attachment(msg, target_folder, overwrite, prefix)
             )
         return attachments_saved
 
     def save_attachment(
-        self, message: Union[dict, Message], target_folder: str, overwrite: bool
-    ):
+        self,
+        message: Union[dict, Message],
+        target_folder: str,
+        overwrite: bool,
+        prefix: str = None,
+    ) -> str:
         # pylint: disable=C0301
         """Save mail attachment of single given email into local folder
 
         :param message: message item
         :param target_folder: local folder for saving attachments to (needs to exist),
-            defaults to user's home directory if None
+         defaults to user's home directory if None
         :param overwrite: overwrite existing file is True, defaults to False
+        :param prefix: optional filename prefix added to the attachments, default empty
+        :return: list of saved attachments (list of absolute filepaths) in one email
 
         Example:
 
         .. code-block:: robotframework
 
-            @{emails}  List Messages  SUBJECT "rpa task"
-            FOR  ${email}  IN  @{emails}
-                Run Keyword If   ${email}[Has-Attachments] == True
-                ...              Save Attachment  ${email}  target_folder=${CURDIR}  overwrite=True
+            @{emails}    List Messages    ALL
+            FOR    ${email}    IN    @{emails}
+                IF    ${email}[Has-Attachments]
+                    Log To Console    Saving attachment for: ${email}[Subject]
+                    ${attachments}=    Save Attachment
+                    ...    ${email}
+                    ...    target_folder=${CURDIR}
+                    ...    overwrite=True
+                    Log To Console    Saved attachments: ${attachments}
+                END
             END
         """  # noqa: E501
+        prefix = prefix or ""
         if target_folder is None:
             target_folder = os.path.expanduser("~")
-        return self._save_attachment(message, target_folder, overwrite)
+        return self._save_attachment(message, target_folder, overwrite, prefix)
 
-    def _save_attachment(self, message, target_folder, overwrite):
+    def _save_attachment(self, message, target_folder, overwrite, prefix):
         attachments_saved = []
         msg = message["Message"] if isinstance(message, dict) else message
+
         for part in msg.walk():
             content_maintype = part.get_content_maintype()
-            content_disposition = part.get("Content-Disposition")
-            if content_maintype != "multipart" and content_disposition is not None:
-                filename = part.get_filename().replace("\r", "").replace("\n", "")
-                if filename:
-                    transfer_encoding = part.get_all("Content-Transfer-Encoding")
-                    if transfer_encoding and transfer_encoding[0] == "base64":
-                        filename_parts = filename.split("?")
-                        if len(filename_parts) > 1:
-                            filename = base64.b64decode(filename_parts[3]).decode(
-                                filename_parts[1]
-                            )
-                    filepath = Path(target_folder) / Path(filename).name
+            if content_maintype != "multipart":
+                filename = get_part_filename(part)
+                if bool(filename):
+                    filepath = Path(target_folder) / Path(f"{prefix}{filename}").name
+                    self.logger.info("Attachment filepath: '%s'", filepath)
                     if not filepath.exists() or overwrite:
                         payload = part.get_payload(decode=True)
                         if payload:
@@ -901,7 +1065,7 @@ class ImapSmtp:
                                 f.write(payload)
                                 attachments_saved.append(str(filepath))
                         else:
-                            self.logger.debug(
+                            self.logger.info(
                                 "Attachment '%s' did not have payload to write",
                                 filename,
                             )
@@ -909,13 +1073,24 @@ class ImapSmtp:
                         self.logger.warning("Did not overwrite file: %s", filepath)
         return attachments_saved
 
-    def _save_eml_file(self, message, target_folder, overwrite):
-        emlfile = Path(target_folder) / f"{message['Mail-Id']}.eml"
-        if not emlfile.exists() or overwrite:
-            with open(emlfile, "wb") as f:
-                f.write(message["bytes"])
-        elif emlfile.exists() and not overwrite:
-            self.logger.warning("Did not overwrite file: %s", emlfile)
+    def _save_eml_file(self, message, target_folder, overwrite, prefix):
+        save_status = True
+        emlfile = f"{prefix}{message['uid']}.eml"
+        full_emlfile_path = Path(os.path.join(target_folder, emlfile))
+        if not full_emlfile_path.exists() or overwrite:
+            with open(full_emlfile_path, "wb") as f:
+                if "bytes" in message.keys():
+                    f.write(message["bytes"])
+                elif "Message" in message:
+                    f.write(message["Message"].as_bytes())
+                else:
+                    save_status = False
+                    self.logger.error(
+                        "Save failed. Unable to get message byte content."
+                    )
+        elif full_emlfile_path.exists() and not overwrite:
+            self.logger.warning("Did not overwrite file: %s", full_emlfile_path)
+        return save_status
 
     @imap_connection
     def wait_for_message(
@@ -985,7 +1160,7 @@ class ImapSmtp:
         """
         kwparams = {}
         if subdirectory:
-            kwparams["directory"] = subdirectory
+            kwparams["directory"] = f'"{subdirectory}"'
         if pattern:
             kwparams["pattern"] = pattern
 
@@ -1119,7 +1294,9 @@ class ImapSmtp:
             return False
 
     @imap_connection
-    def flag_messages(self, criterion: str = None, unflag: bool = False) -> Any:
+    def flag_messages(
+        self, criterion: Union[str, dict] = None, unflag: bool = False
+    ) -> Any:
         """Mark messages as `flagged`
 
         :param criterion: mark messages matching criterion
@@ -1133,16 +1310,19 @@ class ImapSmtp:
             ${flagged}  ${oftotal}    Flag Messages   SUBJECT rpa
             ${unflagged}  ${oftotal}  Flag Messages   SUBJECT rpa  unflag=True
         """
-        self._validate_criterion(criterion)
         action = Action.msg_unflag if unflag else Action.msg_flag
-        result = self._do_actions_on_messages(criterion, actions=[action])
-        return (
-            result["actions_done"] > 0
-            and result["actions_done"] == result["message_count"]
-        )
+        if isinstance(criterion, dict):
+            status = self._perform_actions(mail=criterion, actions=[action])
+            return status
+        else:
+            result = self._do_actions_on_messages(criterion, actions=[action])
+            return (
+                result["actions_done"] > 0
+                and result["actions_done"] == result["message_count"]
+            )
 
     @imap_connection
-    def unflag_messages(self, criterion: str = None) -> Any:
+    def unflag_messages(self, criterion: Union[str, dict] = None) -> Any:
         """Mark messages as not `flagged`
 
         :param criterion: mark messages matching criterion
@@ -1157,7 +1337,9 @@ class ImapSmtp:
         return self.flag_messages(criterion, unflag=True)
 
     @imap_connection
-    def mark_as_read(self, criterion: str = None, unread: bool = False) -> Any:
+    def mark_as_read(
+        self, criterion: Union[str, dict] = None, unread: bool = False
+    ) -> Any:
         """Mark messages as `read`
 
         :param criterion: mark messages matching criterion
@@ -1170,16 +1352,19 @@ class ImapSmtp:
 
             ${read}  ${oftotal}  Mark As Read   SUBJECT rpa
         """
-        self._validate_criterion(criterion)
         action = Action.msg_unread if unread else Action.msg_read
-        result = self._do_actions_on_messages(criterion, actions=[action])
-        return (
-            result["actions_done"] > 0
-            and result["actions_done"] == result["message_count"]
-        )
+        if isinstance(criterion, dict):
+            status = self._perform_actions(mail=criterion, actions=[action])
+            return status
+        else:
+            result = self._do_actions_on_messages(criterion, actions=[action])
+            return (
+                result["actions_done"] > 0
+                and result["actions_done"] == result["message_count"]
+            )
 
     @imap_connection
-    def mark_as_unread(self, criterion: str = None) -> Any:
+    def mark_as_unread(self, criterion: Union[str, dict] = None) -> Any:
         """Mark messages as not `read`
 
         :param criterion: mark messages matching criterion
@@ -1197,32 +1382,36 @@ class ImapSmtp:
         if criterion is None or len(criterion) < 1:
             raise KeyError("Criterion is required parameter")
 
-    def _fetch_uid_and_body(self, mail_id, actions):
-        body = None
+    def _fetch_uid_and_message(self, mail_id, actions):
+        message_dict = None
         _, data = self.imap_conn.fetch(mail_id, "(UID RFC822)")
         pattern_uid = re.compile(r".*UID (\d+) RFC822")
         decoded_data = bytes.decode(data[0][0]) if data[0] else None
+        self.logger.debug("message identification: %s", decoded_data)
         match_result = pattern_uid.match(decoded_data) if decoded_data else None
         uid = match_result.group(1) if match_result else None
         if uid:
-            body = self._fetch_body(mail_id, data, actions)
+            message_dict = self._fetch_message_dict(mail_id, data, actions)
 
         key_to_change = None
         message_id_to_add = None
-        for key, val in body.items():
-            if key.lower() == "message-id":
-                key_to_change = key
-                message_id_to_add = str(val).replace("<", "").replace(">", "").strip()
-        if key_to_change:
-            body["Message-ID"] = message_id_to_add
-            if key_to_change != "Message-ID":
-                del body[key_to_change]
-        return uid, body
+        if message_dict:
+            for key, val in message_dict.items():
+                if key.lower() == "message-id":
+                    key_to_change = key
+                    message_id_to_add = (
+                        str(val).replace("<", "").replace(">", "").strip()
+                    )
+            if key_to_change:
+                message_dict["Message-ID"] = message_id_to_add
+                if key_to_change != "Message-ID":
+                    del message_dict[key_to_change]
+        return uid, message_dict
 
-    def _fetch_body(self, mail_id, data, actions):
+    def _fetch_message_dict(self, mail_id, data, actions):
         # _, data = self.imap_conn.fetch(mail_id, "(RFC822)")
         message = message_from_bytes(data[0][1])
-        message_dict = {"Mail-Id": mail_id, "Message": message}
+        message_dict = {"Mail-Id": mail_id, "Message": message, "Body": ""}
         if Action.msg_save in actions:
             message_dict["bytes"] = data[0][1]
         for k, v in message.items():
@@ -1231,7 +1420,7 @@ class ImapSmtp:
         (
             message_dict["Body"],
             has_attachments,
-        ) = self._get_decoded_email_body(message)
+        ) = self.get_decoded_email_body(message)
         # SET DEFAULT VALUES FOR KEYS
         if "Delivered-To" not in message_dict.keys():
             message_dict["Delivered-To"] = ""
@@ -1241,7 +1430,7 @@ class ImapSmtp:
     @imap_connection
     def move_messages(
         self,
-        criterion: str = None,
+        criterion: Union[str, dict] = None,
         target_folder: str = None,
         source_folder: str = None,
     ) -> bool:
@@ -1264,15 +1453,30 @@ class ImapSmtp:
             ...    source_folder=yyy
             ...    target_folder=XXX
         """
-        self._validate_criterion(criterion)
+        selected_folder = source_folder or self.selected_folder
         if target_folder is None or len(target_folder) == 0:
             raise KeyError("Can't move messages without target_folder")
-        result = self._do_actions_on_messages(
-            criterion=criterion,
-            actions=[Action.msg_move],
-            source_folder=source_folder,
-            target_folder=target_folder,
-        )
+        if isinstance(criterion, dict):
+            readonly = False
+            self.select_folder(selected_folder, readonly)
+            status = self._perform_actions(
+                mail=criterion,
+                actions=[Action.msg_move],
+                target_folder=target_folder,
+            )
+            result = {
+                "actions_done": 1 if status else 0,
+                "message_count": 1,
+                "ids": [criterion["uid"]],
+                "uids": {criterion["uid"]: criterion},
+            }
+        else:
+            result = self._do_actions_on_messages(
+                criterion=criterion,
+                actions=[Action.msg_move],
+                source_folder=source_folder,
+                target_folder=target_folder,
+            )
         if result["actions_done"] > 0:
             self.imap_conn.expunge()
         action_mismatch = result["actions_done"] != result["message_count"]
@@ -1328,21 +1532,31 @@ class ImapSmtp:
     def _modify_gmail_labels(
         self,
         labels: str,
-        criterion: str,
+        criterion: Union[str, dict],
         action: bool = True,
         source_folder: str = None,
     ) -> bool:
-        result = self._do_actions_on_messages(
-            criterion=criterion,
-            actions=[action],
-            labels=labels,
-            source_folder=source_folder,
-        )
+        if isinstance(criterion, dict):
+            selected_folder = source_folder or self.selected_folder
+            self.select_folder(selected_folder)
+            status = self._perform_actions(
+                mail=criterion,
+                actions=[action],
+                labels=labels,
+            )
+            return status
+        else:
+            result = self._do_actions_on_messages(
+                criterion=criterion,
+                actions=[action],
+                labels=labels,
+                source_folder=source_folder,
+            )
 
-        return (
-            result["actions_done"] > 0
-            and result["actions_done"] == result["message_count"]
-        )
+            return (
+                result["actions_done"] > 0
+                and result["actions_done"] == result["message_count"]
+            )
 
     @imap_connection
     def add_gmail_labels(self, labels, criterion, source_folder: str = None) -> bool:
@@ -1396,6 +1610,7 @@ class ImapSmtp:
         labels: str = None,
         limit: int = None,
         overwrite: bool = False,
+        prefix: str = None,
     ) -> Any:
         """Do actions to messages matching criterion and if given,
         source folder
@@ -1429,6 +1644,7 @@ class ImapSmtp:
         :param limit:  maximum number of messages (for example action: msg_delete)
         :param overwrite: to control if file should overwrite
          (for example action: msg_attachment_save)
+        :param prefix: prefix to be added into filename (for example: msg_save)
         :return: result object
 
         Example:
@@ -1452,8 +1668,82 @@ class ImapSmtp:
             target_folder=target_folder,
             limit=limit,
             overwrite=overwrite,
+            prefix=prefix,
         )
         return (
             result["actions_done"] > 0
             and result["actions_done"] == result["message_count"]
         )
+
+    @staticmethod
+    def _ensure_path_object(source: FilePath) -> Path:
+        if not isinstance(source, Path):
+            source = Path(source)
+        return source.expanduser().resolve()
+
+    def email_to_document(
+        self, input_source: Union[FilePath, BinaryIO, bytes], output_path: FilePath
+    ):
+        """Convert a raw e-mail into a Word document.
+
+        This keyword extracts the HTML (or Text) content from the passed input e-mail
+        and saves it into docx format at the provided output path.
+
+        :param input_source: Path, bytes or file-like object with the input raw e-mail
+            content
+        :param output_path: Where to save the output docx file
+
+        Example:
+
+        **Robot Framework**
+
+        .. code-block:: robotframework
+
+            Convert email to docx
+                ${mail_file} =     Get Work Item File    mail.eml
+                Email To Document    ${mail_file}    ${OUTPUT_DIR}${/}mail.docx
+
+        **Python**
+
+        .. code-block:: python
+
+            from pathlib import Path
+            from RPA.Email.ImapSmtp import ImapSmtp
+            from RPA.Robocorp.WorkItems import WorkItems
+
+            lib_work = WorkItems()
+            lib_mail = ImapSmtp()
+
+            def convert_email_to_docx():
+                lib_work.get_input_work_item()
+                mail_file = lib_work.get_work_item_file("mail.eml")
+                lib_mail.email_to_document(mail_file, Path("./output") / "mail.docx")
+
+            convert_email_to_docx()
+        """
+
+        if hasattr(input_source, "read"):
+            self.logger.info("Reading raw e-mail bytes from the provided source object")
+            data = input_source.read()
+        elif isinstance(input_source, bytes):
+            self.logger.info("Using the provided source bytes as raw e-mail content")
+            data = input_source
+        else:
+            input_source = self._ensure_path_object(input_source)
+            self.logger.info("Reading raw e-mail bytes from: %s", input_source)
+            data = input_source.read_bytes()
+        assert isinstance(
+            data, bytes
+        ), "bytes expected for e-mail parsing, got %s" % type(data)
+
+        self.logger.info("Getting the html/text from the raw e-mail")
+        message = message_from_bytes(data)
+        body, _ = self.get_decoded_email_body(message, html_first=True)
+
+        h2d_parser = HtmlToDocx()
+        self.logger.debug("Converting html/text content:\n%s", body)
+        docx = h2d_parser.parse_html_string(body)
+        output_path = self._ensure_path_object(output_path)
+        self.logger.info("Writing converted document into: %s", output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        docx.save(output_path)

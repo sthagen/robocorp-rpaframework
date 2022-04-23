@@ -11,14 +11,13 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
-
 from RPA.Desktop import Desktop
 from RPA.Desktop.Clipboard import Clipboard
 from RPA.Desktop.OperatingSystem import OperatingSystem
-from RPA.core.helpers import delay, clean_filename
 from RPA.core.geometry import Region
+from RPA.core.helpers import delay, clean_filename
 from RPA.core.locators import ImageLocator
+from RPA.core.logger import deprecation
 
 
 if platform.system() == "Windows":
@@ -30,6 +29,10 @@ if platform.system() == "Windows":
     import pywinauto
     import win32gui
     from comtypes import COMError
+else:
+    logging.getLogger(__name__).warning(
+        "RPA.Desktop.Windows library works only on Windows platform"
+    )
 
 
 def write_element_info_as_json(
@@ -203,6 +206,12 @@ class Windows(OperatingSystem):
     ROBOT_LIBRARY_DOC_FORMAT = "REST"
 
     def __init__(self, backend: str = "uia") -> None:
+        deprecation(
+            "`RPA.Desktop.Windows` got deprecated and will be no longer maintained, "
+            "please use `RPA.Windows` instead "
+            "(https://robocorp.com/docs/libraries/rpa-framework/rpa-windows)"
+        )
+
         OperatingSystem.__init__(self)
         self._apps = {}
         self._app_instance_id = 0
@@ -674,6 +683,7 @@ class Windows(OperatingSystem):
         timeout: int = 10,
         existing_app: bool = False,
         wildcard: bool = False,
+        parse_elements: bool = True,
     ) -> Any:
         """Open window by its title.
 
@@ -683,6 +693,8 @@ class Windows(OperatingSystem):
         :param existing_app: set True if selecting window which library has already
          accessed, default False
         :param wildcard: set True for inclusive window title search, default False
+        :param parse_elements: set False to not to parse elements of the window,
+         default True
 
         Example:
 
@@ -707,6 +719,7 @@ class Windows(OperatingSystem):
                         window["handle"],
                         windowtitle=self.windowtitle,
                         existing_app=existing_app,
+                        parse_elements=parse_elements,
                     )
                     break
             time.sleep(0.1)
@@ -746,7 +759,11 @@ class Windows(OperatingSystem):
         return None
 
     def connect_by_handle(
-        self, handle: int, windowtitle: str = None, existing_app: bool = False
+        self,
+        handle: int,
+        windowtitle: str = None,
+        existing_app: bool = False,
+        parse_elements: bool = True,
     ) -> Any:
         """Connect to application by its handle
 
@@ -754,6 +771,8 @@ class Windows(OperatingSystem):
         :param windowtitle: name of the window, defaults to active window if None
         :param existing_app: set True if selecting window which library has already
          accessed, default False
+        :param parse_elements: set False to not to parse elements of the window,
+         default True
 
         Example:
 
@@ -780,7 +799,8 @@ class Windows(OperatingSystem):
             if windowtitle is not None:
                 params = {"windowtitle": windowtitle}
             app_instance = self._add_app_instance(app=app, params=params, dialog=False)
-        self.refresh_window()
+        if parse_elements:
+            self.refresh_window()
         return app_instance
 
     def close_all_applications(self) -> None:
@@ -802,7 +822,7 @@ class Windows(OperatingSystem):
             self.quit_application(aid)
             del self._apps[aid]
 
-    def quit_application(self, app_id: str = None, send_keys: bool = False) -> None:
+    def quit_application(self, app_id: int = None, send_keys: bool = False) -> None:
         """Quit an application by application id or
         active application if `app_id` is None.
 
@@ -1235,6 +1255,7 @@ class Windows(OperatingSystem):
     def wait_for_element(
         self,
         locator: str,
+        use_refreshing: bool = False,
         search_criteria: str = None,
         timeout: float = 30.0,
         interval: float = 2.0,
@@ -1245,6 +1266,8 @@ class Windows(OperatingSystem):
         `ElementNotFoundError` if element is not found within timeout.
 
         :param locator: name of the locator
+        :param use_refreshing: wait for element(s) which are not there yet e.g. listbox
+         item or popups, default False
         :param search_criteria: criteria by which element is matched
         :param timeout: defines how long to wait for element to appear,
          defaults to 30.0 seconds
@@ -1265,6 +1288,8 @@ class Windows(OperatingSystem):
         elements = None
         while time.time() < end_time:
             elements, _ = self.find_element(locator, search_criteria)
+            if use_refreshing:
+                self.refresh_window()
             if len(elements) > 0:
                 break
             if interval >= timeout:
@@ -1623,13 +1648,7 @@ class Windows(OperatingSystem):
         if region is not None:
             region = Region(*region)
 
-        try:
-            dirname = BuiltIn().get_variable_value("${OUTPUT_DIR}")
-        except (ModuleNotFoundError, RobotNotRunningError):
-            dirname = Path.cwd()
-
-        path = Path(dirname, "images", clean_filename(filename))
-        path = Desktop().take_screenshot(path=path, locator=region)
+        Desktop().take_screenshot(path=filename, locator=region)
 
     def _parse_element_attributes(self, element: dict) -> dict:
         """Return filtered element dictionary for an element.
@@ -1643,6 +1662,43 @@ class Windows(OperatingSystem):
             )
             return None
 
+        element_dict = self._prepare_element_dict(element)
+        element_info = element.element_info
+        element_attributes = [a for a in dir(element_info) if not a.startswith("_")]
+
+        for attr in element_attributes:
+            try:
+                attr_value = getattr(element_info, attr)
+                if attr == "parent":
+                    element_dict["parent"] = getattr(attr_value, "control_type", None)
+                else:
+                    element_dict[attr] = (
+                        attr_value() if callable(attr_value) else str(attr_value)
+                    )
+            except TypeError:
+                pass
+            except NotImplementedError:
+                pass
+            except COMError as ce:
+                self.logger.info("Got COM error: %s", str(ce))
+
+        return self._clean_element_dict(element_dict)
+
+    def _prepare_element_dict(self, element):
+        element_dict = {}
+
+        element_dict["object"] = element
+        try:
+            element_dict["legacy"] = (
+                element.legacy_properties()
+                if hasattr(element, "legacy_properties")
+                else None
+            )
+        except AttributeError:
+            pass
+        return element_dict
+
+    def _clean_element_dict(self, element_dict):
         attributes_to_remove = [
             # "automation_id",
             "children",
@@ -1671,43 +1727,8 @@ class Windows(OperatingSystem):
             # "visible",
         ]
 
-        element_dict = {}
-        element_info = element.element_info
-        element_attributes = [a for a in dir(element_info) if not a.startswith("_")]
-
-        for attr in element_attributes:
-            try:
-                attr_value = getattr(element_info, attr)
-                if attr == "parent":
-                    element_dict["parent"] = getattr(attr_value, "control_type", None)
-                else:
-                    element_dict[attr] = (
-                        attr_value() if callable(attr_value) else str(attr_value)
-                    )
-            except TypeError:
-                pass
-            except COMError as ce:
-                self.logger.info("Got COM error: %s", str(ce))
-
         for attr in attributes_to_remove:
             element_dict.pop(attr, None)
-
-        element_dict["legacy"] = (
-            element.legacy_properties()
-            if hasattr(element, "legacy_properties")
-            else None
-        )
-        element_dict["object"] = element
-        # child_id = (
-        #     f"[{element_dict['legacy']['ChildId']}]"
-        #     if (element_dict["legacy"] and element_dict["legacy"]["ChildId"] > 0)
-        #     else ""
-        # )
-        # element_dict[
-        #     "xpath"
-        # ] = f"/{element_dict['parent']}/{element_dict['control_type']}{child_id}"
-        # if "Window" not in element_dict["xpath"]:
-        #     element_dict["xpath"] = f"/Window{element_dict['xpath']}"
 
         return element_dict
 

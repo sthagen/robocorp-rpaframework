@@ -1,29 +1,41 @@
 import copy
 import json
+import logging
 import os
-import pytest
 import tempfile
 from contextlib import contextmanager
-from pathlib import Path
 
+try:
+    from contextlib import nullcontext
+except ImportError:
+    from contextlib import suppress as nullcontext
+from pathlib import Path
+from unittest import mock
+
+import pytest
+from requests import HTTPError
 from RPA.Robocorp.WorkItems import (
     BaseAdapter,
     EmptyQueue,
+    Error,
     FileAdapter,
+    RobocorpAdapter,
     State,
     WorkItems,
 )
+from RPA.Robocorp.utils import DEBUG_ON, RequestsHTTPError
+
+from . import RESOURCES_DIR, RESULTS_DIR
 
 
 VARIABLES_FIRST = {"username": "testguy", "address": "guy@company.com"}
 VARIABLES_SECOND = {"username": "another", "address": "dude@company.com"}
-
+IN_OUT_ID = "workitem-id-out"
 VALID_DATA = {
     "workitem-id-first": VARIABLES_FIRST,
     "workitem-id-second": VARIABLES_SECOND,
-    "workitem-id-custom": [1, 2, 3],
+    IN_OUT_ID: [1, 2, 3],
 }
-
 VALID_FILES = {
     "workitem-id-first": {
         "file1.txt": b"data1",
@@ -31,19 +43,21 @@ VALID_FILES = {
         "file3.png": b"data3",
     },
     "workitem-id-second": {},
-    "workitem-id-custom": {},
+    IN_OUT_ID: {},
 }
-
 ITEMS_JSON = [{"payload": {"a-key": "a-value"}, "files": {"a-file": "file.txt"}}]
+
+OUTPUT_DIR = RESULTS_DIR / "output_dir"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @contextmanager
-def temp_filename(content=None):
-    """Create temporary file and return filename, delete file afterwards.
+def temp_filename(content=None, **kwargs):
+    """Create temporary file and yield file relative path, then delete it afterwards.
     Needs to close file handle, since Windows won't allow multiple
     open handles to the same file.
     """
-    with tempfile.NamedTemporaryFile(delete=False) as fd:
+    with tempfile.NamedTemporaryFile(delete=False, **kwargs) as fd:
         path = fd.name
         if content:
             fd.write(content)
@@ -92,11 +106,12 @@ class MockAdapter(BaseAdapter):
         finally:
             self.INDEX += 1
 
-    def release_input(self, item_id: str, state: State):
-        self.releases.append((item_id, state))  # purely for testing purposes
+    def release_input(self, item_id: str, state: State, exception: dict = None):
+        self.releases.append((item_id, state, exception))  # purely for testing purposes
 
     def create_output(self, parent_id, payload=None) -> str:
-        raise NotImplementedError
+        self.save_payload(IN_OUT_ID, payload)
+        return IN_OUT_ID
 
     def load_payload(self, item_id):
         return self.DATA[item_id]
@@ -216,16 +231,16 @@ class TestLibrary:
         with pytest.raises(KeyError):
             library.delete_work_item_variables("doesntexist", force=False)
 
-    def test_delete_variables_multiple(self, library):
+    def test_delete_variables_single(self, library):
         library.get_input_work_item()
 
         assert "username" in library.list_work_item_variables()
-        assert len(library.current["variables"]) == 2
+        assert len(library.current.payload) == 2
 
         library.delete_work_item_variables("username")
 
         assert "username" not in library.list_work_item_variables()
-        assert len(library.current["variables"]) == 1
+        assert len(library.current.payload) == 1
 
     def test_delete_variables_multiple(self, library):
         library.get_input_work_item()
@@ -473,6 +488,43 @@ class TestLibrary:
         with pytest.raises(RuntimeError):
             library.create_output_work_item()
 
+    @pytest.fixture(
+        params=[
+            lambda *files: files,  # files provided as tuple
+            lambda *files: list(files),  # as list of paths
+            lambda *files: ", ".join(files),  # comma separated paths
+        ]
+    )
+    def out_files(self, request):
+        """Output work item files."""
+        with temp_filename(b"out-content-1", suffix="-1.txt") as path1, temp_filename(
+            b"out-content-2", suffix="-2.txt"
+        ) as path2:
+            func = request.param
+            yield func(path1, path2)
+
+    def test_create_output_work_item_variables_files(self, library, out_files):
+        library.get_input_work_item()
+        variables = {"my_var1": "value1", "my_var2": "value2"}
+        library.create_output_work_item(variables=variables, files=out_files, save=True)
+
+        assert library.get_work_item_variable("my_var1") == "value1"
+        assert library.get_work_item_variable("my_var2") == "value2"
+
+        # This actually "downloads" (creates) the files, so make sure we remove them
+        #  afterwards.
+        paths = library.get_work_item_files("*.txt", dirname=OUTPUT_DIR)
+        try:
+            assert len(paths) == 2
+            for path in paths:
+                with open(path) as stream:
+                    content = stream.read()
+                idx = Path(path).stem.split("-")[-1]
+                assert content == f"out-content-{idx}"
+        finally:
+            for path in paths:
+                os.remove(path)
+
     def test_custom_root(self, adapter):
         library = WorkItems(default_adapter=adapter, root="vars")
         item = library.get_input_work_item()
@@ -505,7 +557,7 @@ class TestLibrary:
             return username is not None
 
         library.get_input_work_item()
-        results = library.for_each_input_work_item(func, 1, 2, _limit=limit, r=3)
+        results = library.for_each_input_work_item(func, 1, 2, items_limit=limit, r=3)
 
         expected_usernames = ["testguy", "another"]
         expected_results = [True, True, False]
@@ -515,19 +567,160 @@ class TestLibrary:
         assert usernames == expected_usernames
         assert results == expected_results
 
-    def test_release_work_item(self, library):
-        library.get_input_work_item()
-        library.release_input_work_item("FAILED")  # intentionally provide a string
+    def test_iter_work_items_limit_and_state(self, library):
+        def func():
+            return 1
 
-        assert library.current.state == State.FAILED
-        assert library.adapter.releases == [("workitem-id-first", State.FAILED)]
+        # Pick one single item and make sure its state is set implicitly.
+        results = library.for_each_input_work_item(func, items_limit=1)
+        assert len(results) == 1
+        assert library.current.state is State.DONE
+
+        def func2():
+            library.release_input_work_item(State.FAILED)
+            return 2
+
+        # Pick-up the rest of the two inputs and set state explicitly.
+        results = library.for_each_input_work_item(func2)
+        assert len(results) == 2
+        assert library.current.state is State.FAILED
+
+    @pytest.mark.parametrize("return_results", [True, False])
+    def test_iter_work_items_return_results(self, library, return_results):
+        def func():
+            return 1
+
+        library.get_input_work_item()
+        results = library.for_each_input_work_item(func, return_results=return_results)
+        if return_results:
+            assert results == [1] * 3
+        else:
+            assert results is None
+
+    @pytest.mark.parametrize("processed_items", [0, 1, 2, 3])
+    def test_successive_work_items_iteration(self, library, processed_items):
+        for _ in range(processed_items):
+            library.get_input_work_item()
+            library.release_input_work_item(State.DONE)
+
+        def func():
+            pass
+
+        # Checks if all remaining input work items are processed once.
+        results = library.for_each_input_work_item(func)
+        assert len(results) == 3 - processed_items
+
+        # Checks if there's no double processing of the last already processed item.
+        results = library.for_each_input_work_item(func)
+        assert len(results) == 0
+
+    @pytest.fixture(
+        params=[
+            None,
+            {"exception_type": "BUSINESS"},
+            {
+                "exception_type": "APPLICATION",
+                "code": "UNEXPECTED_ERROR",
+                "message": "This is an unexpected error",
+            },
+            {
+                "exception_type": "APPLICATION",
+                "code": None,
+                "message": "This is an unexpected error",
+            },
+            {
+                "exception_type": "APPLICATION",
+                "code": None,
+                "message": None,
+            },
+            {
+                "exception_type": None,
+                "code": None,
+                "message": None,
+            },
+            {
+                "exception_type": None,
+                "code": "APPLICATION",
+                "message": None,
+            },
+            {
+                "exception_type": None,
+                "code": "",
+                "message": "Not empty",
+            },
+        ]
+    )
+    def release_exception(self, request):
+        exception = request.param or {}
+        effect = nullcontext()
+        success = True
+        if not exception.get("exception_type") and any(
+            map(lambda key: exception.get(key), ["code", "message"])
+        ):
+            effect = pytest.raises(RuntimeError)
+            success = False
+        return exception or None, effect, success
+
+    def test_release_work_item_failed(self, library, release_exception):
+        exception, effect, success = release_exception
+
+        library.get_input_work_item()
+        with effect:
+            library.release_input_work_item(
+                "FAILED", **(exception or {})
+            )  # intentionally providing a string for the state
+        if success:
+            assert library.current.state == State.FAILED
+
+        exception_type = (exception or {}).pop("exception_type", None)
+        if exception_type:
+            exception["type"] = Error(exception_type).value
+            exception.setdefault("code", None)
+            exception.setdefault("message", None)
+        else:
+            exception = None
+        if success:
+            assert library.adapter.releases == [
+                ("workitem-id-first", State.FAILED, exception)
+            ]
+
+    @pytest.mark.parametrize("exception", [None, {"exception_type": Error.APPLICATION}])
+    def test_release_work_item_done(self, library, exception):
+        library.get_input_work_item()
+        library.release_input_work_item(State.DONE, **(exception or {}))
+        assert library.current.state is State.DONE
+        assert library.adapter.releases == [
+            # No exception sent for non failures.
+            ("workitem-id-first", State.DONE, None)
+        ]
 
     def test_auto_release_work_item(self, library):
         library.get_input_work_item()
         library.get_input_work_item()  # this automatically sets the state of the last
 
         assert library.current.state is None  # because the previous one has a state
-        assert library.adapter.releases == [("workitem-id-first", State.DONE)]
+        assert library.adapter.releases == [("workitem-id-first", State.DONE, None)]
+
+    @pytest.mark.parametrize(
+        "email_file,expected_body",
+        [
+            ("mail-text.txt", "A message from e-mail"),
+            ("mail-json.txt", {"message": "from email"}),
+            ("mail-yaml.txt", {"message": "from email", "extra": {"value": 1}}),
+        ],
+    )
+    def test_parse_work_item_from_email(self, library, email_file, expected_body):
+        raw_email = (RESOURCES_DIR / "work-items" / email_file).read_text()
+        library.adapter.DATA["workitem-id-first"]["rawEmail"] = raw_email
+
+        library.get_input_work_item()
+        body = library.get_work_item_variable("parsedEmail")["Body"]
+        assert body == expected_body
+
+    def test_parse_work_item_from_email_missing_content(self, library):
+        library.get_input_work_item()
+        with pytest.raises(KeyError):
+            library.get_work_item_variable("parsedEmail")
 
 
 class TestFileAdapter:
@@ -537,11 +730,14 @@ class TestFileAdapter:
     def _input_work_items(self):
         with tempfile.TemporaryDirectory() as datadir:
             items_in = os.path.join(datadir, "items.json")
-            items_out = os.path.join(datadir, "output_dir", "items-out.json")
             with open(items_in, "w") as fd:
                 json.dump(ITEMS_JSON, fd)
             with open(os.path.join(datadir, "file.txt"), "w") as fd:
                 fd.write("some mock content")
+
+            output_dir = os.path.join(datadir, "output_dir")
+            os.makedirs(output_dir)
+            items_out = os.path.join(output_dir, "items-out.json")
 
             yield items_in, items_out
 
@@ -556,6 +752,11 @@ class TestFileAdapter:
             monkeypatch.setenv(request.param[0], items_in)
             monkeypatch.setenv(request.param[1], items_out)
             yield FileAdapter()
+
+    @pytest.fixture
+    def empty_adapter(self):
+        # No work items i/o files nor envs set.
+        return FileAdapter()
 
     def test_load_data(self, adapter):
         item_id = adapter.reserve_input()
@@ -581,26 +782,26 @@ class TestFileAdapter:
             content=b"somedata",
         )
         assert adapter.inputs[0]["files"]["secondfile.txt"] == "secondfile2.txt"
-        assert os.path.isfile(Path(adapter.path).parent / "secondfile2.txt")
+        assert os.path.isfile(Path(adapter.input_path).parent / "secondfile2.txt")
 
     def test_save_data_input(self, adapter):
         item_id = adapter.reserve_input()
         adapter.save_payload(item_id, {"key": "value"})
-        with open(adapter.path) as fd:
+        with open(adapter.input_path) as fd:
             data = json.load(fd)
             assert data == [
                 {"payload": {"key": "value"}, "files": {"a-file": "file.txt"}}
             ]
 
     def test_save_data_output(self, adapter):
-        item_id = adapter.create_output(0, {})
+        item_id = adapter.create_output("0", {})
         adapter.save_payload(item_id, {"key": "value"})
 
         output = os.getenv("RPA_OUTPUT_WORKITEM_PATH")
         if output:
             assert "output_dir" in output  # checks automatic dir creation
         else:
-            output = Path(adapter.path).with_suffix(".output.json")
+            output = Path(adapter.input_path).with_suffix(".output.json")
 
         assert os.path.isfile(output)
         with open(output) as fd:
@@ -631,3 +832,315 @@ class TestFileAdapter:
             monkeypatch.setenv("RPA_WORKITEMS_PATH", items)
             adapter = FileAdapter()
             assert adapter.inputs == [{"payload": {}}]
+
+    def test_without_items_paths(self, empty_adapter):
+        assert empty_adapter.inputs == [{"payload": {}}]
+
+        # Can't save inputs nor outputs since there's no path defined for them.
+        with pytest.raises(RuntimeError):
+            empty_adapter.save_payload("0", {"input": "value"})
+        with pytest.raises(RuntimeError):
+            _ = empty_adapter.output_path
+        with pytest.raises(RuntimeError):
+            empty_adapter.create_output("1", {"var": "some-value"})
+
+
+class TestRobocorpAdapter:
+    """Test control room API calls and retrying behaviour."""
+
+    ENV = {
+        "RC_WORKSPACE_ID": "1",
+        "RC_PROCESS_RUN_ID": "2",
+        "RC_ACTIVITY_RUN_ID": "3",
+        "RC_WORKITEM_ID": "4",
+        "RC_API_WORKITEM_HOST": "https://api.workitem.com",
+        "RC_API_WORKITEM_TOKEN": "workitem-token",
+        "RC_API_PROCESS_HOST": "https://api.process.com",
+        "RC_API_PROCESS_TOKEN": "process-token",
+        "RC_PROCESS_ID": "5",
+    }
+
+    HEADERS_WORKITEM = {
+        "Authorization": f"Bearer {ENV['RC_API_WORKITEM_TOKEN']}",
+        "Content-Type": "application/json",
+    }
+    HEADERS_PROCESS = {
+        "Authorization": f"Bearer {ENV['RC_API_PROCESS_TOKEN']}",
+        "Content-Type": "application/json",
+    }
+
+    @pytest.fixture
+    def adapter(self, monkeypatch):
+        for name, value in self.ENV.items():
+            monkeypatch.setenv(name, value)
+
+        with mock.patch("RPA.Robocorp.utils.requests.get") as mock_get, mock.patch(
+            "RPA.Robocorp.utils.requests.post"
+        ) as mock_post, mock.patch(
+            "RPA.Robocorp.utils.requests.put"
+        ) as mock_put, mock.patch(
+            "RPA.Robocorp.utils.requests.delete"
+        ) as mock_delete, mock.patch(
+            "time.sleep", return_value=None
+        ) as mock_sleep:
+            self.mock_get = mock_get
+            self.mock_post = mock_post
+            self.mock_put = mock_put
+            self.mock_delete = mock_delete
+
+            self.mock_get.__name__ = "get"
+            self.mock_post.__name__ = "post"
+            self.mock_put.__name__ = "put"
+            self.mock_delete.__name__ = "delete"
+
+            self.mock_sleep = mock_sleep
+
+            yield RobocorpAdapter()
+
+    def test_reserve_input(self, adapter):
+        initial_item_id = adapter.reserve_input()
+        assert initial_item_id == self.ENV["RC_WORKITEM_ID"]
+
+        self.mock_post.return_value.json.return_value = {"workItemId": "44"}
+        reserved_item_id = adapter.reserve_input()
+        assert reserved_item_id == "44"
+
+        url = "https://api.process.com/process-v1/workspaces/1/processes/5/runs/2/robotRuns/3/reserve-next-work-item"
+        self.mock_post.assert_called_once_with(url, headers=self.HEADERS_PROCESS)
+
+    @pytest.mark.parametrize(
+        "exception",
+        [None, {"type": "BUSINESS", "code": "INVALID_DATA", "message": None}],
+    )
+    def test_release_input(self, adapter, exception):
+        item_id = "26"
+        adapter.release_input(
+            item_id,
+            State.FAILED,
+            exception=exception.copy() if exception else exception,
+        )
+
+        url = "https://api.process.com/process-v1/workspaces/1/processes/5/runs/2/robotRuns/3/release-work-item"
+        body = {
+            "workItemId": item_id,
+            "state": State.FAILED.value,
+        }
+        if exception:
+            body["exception"] = {
+                key: value for (key, value) in exception.items() if value
+            }
+        self.mock_post.assert_called_once_with(
+            url, headers=self.HEADERS_PROCESS, json=body
+        )
+
+    def test_load_payload(self, adapter):
+        item_id = "4"
+        expected_payload = {"name": "value"}
+        self.mock_get.return_value.json.return_value = expected_payload
+        payload = adapter.load_payload(item_id)
+        assert payload == expected_payload
+
+        response = self.mock_get.return_value
+        response.ok = False
+        response.status_code = 404
+        payload = adapter.load_payload(item_id)
+        assert payload == {}
+
+    def test_save_payload(self, adapter):
+        item_id = "1993"
+        payload = {"Cosmin": "Poieana"}
+        adapter.save_payload(item_id, payload)
+
+        url = f"https://api.workitem.com/json-v1/workspaces/1/workitems/{item_id}/data"
+        self.mock_put.assert_called_once_with(
+            url, headers=self.HEADERS_WORKITEM, json=payload
+        )
+
+    def test_remove_file(self, adapter):
+        item_id = "44"
+        name = "procrastination.txt"
+        file_id = "88"
+        self.mock_get.return_value.json.return_value = [
+            {"fileName": name, "fileId": file_id}
+        ]
+        adapter.remove_file(item_id, name)
+
+        url = f"https://api.workitem.com/json-v1/workspaces/1/workitems/{item_id}/files/{file_id}"
+        self.mock_delete.assert_called_once_with(url, headers=self.HEADERS_WORKITEM)
+
+    def test_list_files(self, adapter):
+        expected_files = ["just.py", "mark.robot", "it.txt"]
+        self.mock_get.return_value.json.return_value = [
+            {"fileName": expected_files[0], "fileId": "1"},
+            {"fileName": expected_files[1], "fileId": "2"},
+            {"fileName": expected_files[2], "fileId": "3"},
+        ]
+        files = adapter.list_files("4")
+        assert files == expected_files
+
+    @staticmethod
+    def _failing_response(request):
+        resp = mock.MagicMock()
+        resp.ok = False
+        resp.json.return_value = request.param[0]
+        resp.raise_for_status.side_effect = request.param[1]
+        return resp
+
+    @pytest.fixture(
+        params=[
+            # Requests response attribute values for: `.json()`, `.raise_for_status()`
+            ({}, None),
+            (None, HTTPError()),
+        ]
+    )
+    def failing_response(self, request):
+        return self._failing_response(request)
+
+    @pytest.fixture
+    def success_response(self):
+        resp = mock.MagicMock()
+        resp.ok = True
+        return resp
+
+    @pytest.mark.parametrize(
+        "status_code,call_count",
+        [
+            # Retrying enabled:
+            (429, 5),
+            (500, 5),
+            # Retrying disabled:
+            (400, 1),
+            (401, 1),
+            (403, 1),
+            (409, 1),
+        ],
+    )
+    def test_list_files_retrying(
+        self, adapter, failing_response, status_code, call_count
+    ):
+        self.mock_get.return_value = failing_response
+        failing_response.status_code = status_code
+
+        with pytest.raises(RequestsHTTPError) as exc_info:
+            adapter.list_files("4")
+        assert exc_info.value.status_code == status_code
+        assert self.mock_get.call_count == call_count  # tried once or 5 times in a row
+
+    @pytest.fixture(
+        params=[
+            # Requests response attribute values for: `.json()`, `.raise_for_status()`
+            ({"error": {"code": "UNEXPECTED_ERROR"}}, None),  # normal response
+            ('{"error": {"code": "UNEXPECTED_ERROR"}}', None),  # double serialized
+            (r'"{\"error\": {\"code\": \"UNEXPECTED_ERROR\"}}"', None),  # triple
+            ('[{"some": "value"}]', HTTPError()),  # double serialized list
+        ]
+    )
+    def failing_deserializing_response(self, request):
+        return self._failing_response(request)
+
+    def test_bad_response_payload(self, adapter, failing_deserializing_response):
+        self.mock_get.return_value = failing_deserializing_response
+        failing_deserializing_response.status_code = 429
+
+        with pytest.raises(RequestsHTTPError) as exc_info:
+            adapter.list_files("4")
+
+        err = "UNEXPECTED_ERROR"
+        call_count = 5
+        if err not in str(failing_deserializing_response.json.return_value):
+            err = "Error"  # default error message in the absence of it
+        assert exc_info.value.status_code == 429
+        assert exc_info.value.status_message == err
+        assert self.mock_get.call_count == call_count
+
+    def test_logging_and_sleeping(self, adapter, failing_response, caplog):
+        assert DEBUG_ON, 'this test should be ran with "RPA_DEBUG_API" on'
+
+        # 1st call: raises 500 -> unexpected server crash, therefore needs retry
+        #   (1 sleep)
+        # 2nd call: now raises 429 -> rate limit hit, needs retry and sleeps extra
+        #   (2 sleeps)
+        # 3rd call: raises 400 -> malformed request, doesn't retry anymore and raises
+        #   with last error, no sleeps performed
+        status_code = mock.PropertyMock(side_effect=[500, 429, 400])
+        type(failing_response).status_code = status_code
+        failing_response.reason = "for no reason :)"
+        self.mock_post.return_value = failing_response
+        with pytest.raises(RequestsHTTPError) as exc_info:
+            with caplog.at_level(logging.DEBUG):
+                adapter.create_output("1")
+
+        assert exc_info.value.status_code == 400  # last received server code
+        assert self.mock_sleep.call_count == 3  # 1 sleep (500) + 2 sleeps (429)
+        expected_logs = [
+            "POST 'https://api.process.com/process-v1/workspaces/1/processes/5/work-items/1/output'",
+            "API response: 500 'for no reason :)'",
+            "API response: 429 'for no reason :)'",
+            "API response: 400 'for no reason :)'",
+        ]
+        captured_logs = set(record.message for record in caplog.records)
+        for expected_log in expected_logs:
+            assert expected_log in captured_logs
+
+    def test_add_get_file(self, adapter, success_response, caplog):
+        """Uploads and retrieves files with AWS support.
+
+        This way we check if sensitive information (like auth params) don't get
+        exposed.
+        """
+        item_id = adapter.reserve_input()  # reserved initially from the env var
+        file_name = "myfile.txt"
+        file_content = b"some-data"
+
+        # Behaviour for: adding a file (2x POST), getting the file (3x GET).
+        #
+        # POST #1: 201 - default error handling
+        # POST #2: 201 - custom error handling -> status code retrieved
+        # GET #1: 200 - default error handling
+        # GET #2: 200 - default error handling
+        # GET #3: 200 - custom error handling -> status code retrieved
+        status_code = mock.PropertyMock(side_effect=[201, 200, 200])
+        type(success_response).status_code = status_code
+        # POST #1: JSON with file related data
+        # POST #2: ignored response content
+        # GET #1: JSON with all the file IDs
+        # GET #2: JSON with the file URL corresponding to ID
+        # GET #3: bytes response content (not ignored)
+        post_data = {
+            "url": "https://s3.eu-west-1.amazonaws.com/ci-4f23e-robocloud-td",
+            "fields": {
+                "dont": "care",
+            },
+        }
+        get_files_data = [
+            {
+                "fileName": file_name,
+                "fileId": "file-id",
+            }
+        ]
+        get_file_data = {
+            "url": "https://ci-4f23e-robocloud-td.s3.eu-west-1.amazonaws.com/files/ws_17/wi_0dd63f07-ba7b-414a-bf92-293080975d2f/file_eddfd9ac-143f-4eb9-888f-b9c378e67aec?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=secret-credentials",
+        }
+        success_response.json.side_effect = [post_data, get_files_data, get_file_data]
+        success_response.content = file_content
+        self.mock_post.return_value = self.mock_get.return_value = success_response
+
+        # 2x POST (CR file entry, AWS file content)
+        adapter.add_file(
+            item_id,
+            file_name,
+            original_name="not-used.txt",
+            content=file_content,
+        )
+        files = self.mock_post.call_args_list[-1][1]["files"]
+        assert files == {"file": (file_name, file_content)}
+
+        # 3x GET (all files, specific file, file content)
+        content = adapter.get_file(item_id, file_name)
+        assert content == file_content
+
+        # Making sure sensitive info doesn't get exposed.
+        exposed = any(
+            "secret-credentials" in record.message for record in caplog.records
+        )
+        assert not exposed, "secret got exposed"
