@@ -126,6 +126,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../filesystem/index.html">FileSystem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hubspot/index.html">HubSpot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
@@ -142,6 +143,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../tables/index.html">Tables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../twitter/index.html">Twitter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../windows/index.html">Windows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../word_application/index.html">Word.Application</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Project</span></p>
@@ -321,9 +323,9 @@ or with keyword <code class="docutils literal notranslate"><span class="pre">Set
 <p>This will start web based authentication process, which outputs the token at the end.
 Token could be stored into <code class="docutils literal notranslate"><span class="pre">Robocorp</span> <span class="pre">Vault</span></code>.</p>
 <p>Example Vault content.</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;googlecloud&quot;</span><span class="p">:</span> <span class="p">{</span>
-    <span class="nt">&quot;oauth-token&quot;</span><span class="p">:</span> <span class="s2">&quot;gANfd123321aabeedYsc&quot;</span>
-<span class="p">}</span>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;googlecloud&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;oauth-token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gANfd123321aabeedYsc&quot;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Using the Vault.</p>
@@ -336,7 +338,16 @@ Token could be stored into <code class="docutils literal notranslate"><span clas
 </pre></div>
 </div>
 <p><strong>Installation</strong></p>
-<p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">rpaframework-google</span></code></p>
+<p>This library, <code class="docutils literal notranslate"><span class="pre">RPA.Cloud.Google</span></code> is available via <strong>rpaframework-google</strong> package.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">channels</span><span class="p">:</span><span class="w"></span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda-forge</span><span class="w"></span>
+<span class="nt">dependencies</span><span class="p">:</span><span class="w"></span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python=3.7.5</span><span class="w"></span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip=20.1</span><span class="w"></span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">pip</span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rpaframework-google==1.0.2</span><span class="w"></span>
+</pre></div>
+</div>
 <p><strong>Examples</strong></p>
 <p><strong>Robot Framework</strong></p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="gh">*** Settings ***</span><span class="p"></span>
@@ -349,9 +360,11 @@ Token could be stored into <code class="docutils literal notranslate"><span clas
 <span class="gh">*** Tasks ***</span><span class="p"></span>
 <span class="gu">Upload a file into a new storage bucket</span><span class="p"></span>
 <span class="p">    [</span><span class="kn">Setup</span><span class="p">]   </span><span class="nf">Init Storage</span><span class="p">    ${</span><span class="nv">SERVICE_ACCOUNT</span><span class="p">}</span>
-<span class="p">    </span><span class="nf">Create Bucket</span><span class="p">    ${</span><span class="nv">BUCKET_NAME</span><span class="p">}</span>
-<span class="p">    </span><span class="nf">Upload File</span><span class="p">      ${</span><span class="nv">BUCKET_NAME</span><span class="p">}   ${</span><span class="nv">/</span><span class="p">}</span><span class="s">path</span><span class="p">${</span><span class="nv">/</span><span class="p">}</span><span class="s">to</span><span class="p">${</span><span class="nv">/</span><span class="p">}</span><span class="s">file.pdf</span><span class="p">  </span><span class="s">myfile.pdf</span><span class="p"></span>
-<span class="p">    @{</span><span class="nv">files</span><span class="p">}         </span><span class="nf">List Files</span><span class="p">   ${</span><span class="nv">BUCKET_NAME</span><span class="p">}</span>
+<span class="p">    </span><span class="nf">Create Storage Bucket</span><span class="p">    ${</span><span class="nv">BUCKET_NAME</span><span class="p">}</span>
+<span class="p">    </span><span class="nf">Upload Storage File</span><span class="p">      ${</span><span class="nv">BUCKET_NAME</span><span class="p">}</span>
+<span class="p">    ...   ${</span><span class="nv">/</span><span class="p">}</span><span class="s">path</span><span class="p">${</span><span class="nv">/</span><span class="p">}</span><span class="s">to</span><span class="p">${</span><span class="nv">/</span><span class="p">}</span><span class="s">file.pdf</span><span class="p"></span>
+<span class="p">    ...   </span><span class="s">myfile.pdf</span><span class="p"></span>
+<span class="p">    @{</span><span class="nv">files</span><span class="p">}         </span><span class="nf">List Storage Files</span><span class="p">   ${</span><span class="nv">BUCKET_NAME</span><span class="p">}</span>
 <span class="p">    FOR   ${</span><span class="nv">file</span><span class="p">}  IN   @{</span><span class="nv">files</span><span class="p">}</span>
 <span class="p">        </span><span class="nf">Log</span><span class="p">  ${</span><span class="nv">file</span><span class="p">}</span>
 <span class="p">    END</span>

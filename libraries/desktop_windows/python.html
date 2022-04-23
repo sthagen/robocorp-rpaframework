@@ -126,6 +126,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../filesystem/index.html">FileSystem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hubspot/index.html">HubSpot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
@@ -142,6 +143,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../tables/index.html">Tables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../twitter/index.html">Twitter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../windows/index.html">Windows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../word_application/index.html">Word.Application</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Project</span></p>
@@ -491,7 +493,7 @@ documentation page.</p>
 
 <dl class="method">
 <dt id="RPA.Desktop.Windows.Windows.connect_by_handle">
-<code class="sig-name descname">connect_by_handle</code><span class="sig-paren">(</span><em class="sig-param">handle: int</em>, <em class="sig-param">windowtitle: str = None</em>, <em class="sig-param">existing_app: bool = False</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.connect_by_handle" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">connect_by_handle</code><span class="sig-paren">(</span><em class="sig-param">handle: int</em>, <em class="sig-param">windowtitle: str = None</em>, <em class="sig-param">existing_app: bool = False</em>, <em class="sig-param">parse_elements: bool = True</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.connect_by_handle" title="Permalink to this definition">¶</a></dt>
 <dd><p>Connect to application by its handle</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -500,6 +502,8 @@ documentation page.</p>
 <li><p><strong>windowtitle</strong> – name of the window, defaults to active window if None</p></li>
 <li><p><strong>existing_app</strong> – set True if selecting window which library has already
 accessed, default False</p></li>
+<li><p><strong>parse_elements</strong> – set False to not to parse elements of the window,
+default True</p></li>
 </ul>
 </dd>
 </dl>
@@ -1152,7 +1156,7 @@ Excel, Word, Outlook and Powerpoint.</p>
 
 <dl class="method">
 <dt id="RPA.Desktop.Windows.Windows.open_dialog">
-<code class="sig-name descname">open_dialog</code><span class="sig-paren">(</span><em class="sig-param">windowtitle: str = None</em>, <em class="sig-param">highlight: bool = False</em>, <em class="sig-param">timeout: int = 10</em>, <em class="sig-param">existing_app: bool = False</em>, <em class="sig-param">wildcard: bool = False</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.open_dialog" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">open_dialog</code><span class="sig-paren">(</span><em class="sig-param">windowtitle: str = None</em>, <em class="sig-param">highlight: bool = False</em>, <em class="sig-param">timeout: int = 10</em>, <em class="sig-param">existing_app: bool = False</em>, <em class="sig-param">wildcard: bool = False</em>, <em class="sig-param">parse_elements: bool = True</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.open_dialog" title="Permalink to this definition">¶</a></dt>
 <dd><p>Open window by its title.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1163,6 +1167,8 @@ Excel, Word, Outlook and Powerpoint.</p>
 <li><p><strong>existing_app</strong> – set True if selecting window which library has already
 accessed, default False</p></li>
 <li><p><strong>wildcard</strong> – set True for inclusive window title search, default False</p></li>
+<li><p><strong>parse_elements</strong> – set False to not to parse elements of the window,
+default True</p></li>
 </ul>
 </dd>
 </dl>
@@ -1330,7 +1336,7 @@ and <cite>False</cite> does inclusive matching</p></li>
 
 <dl class="method">
 <dt id="RPA.Desktop.Windows.Windows.quit_application">
-<code class="sig-name descname">quit_application</code><span class="sig-paren">(</span><em class="sig-param">app_id: str = None</em>, <em class="sig-param">send_keys: bool = False</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Desktop.Windows.Windows.quit_application" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">quit_application</code><span class="sig-paren">(</span><em class="sig-param">app_id: int = None</em>, <em class="sig-param">send_keys: bool = False</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Desktop.Windows.Windows.quit_application" title="Permalink to this definition">¶</a></dt>
 <dd><p>Quit an application by application id or
 active application if <cite>app_id</cite> is None.</p>
 <dl class="field-list simple">
@@ -1538,7 +1544,7 @@ applications</p>
 
 <dl class="method">
 <dt id="RPA.Desktop.Windows.Windows.wait_for_element">
-<code class="sig-name descname">wait_for_element</code><span class="sig-paren">(</span><em class="sig-param">locator: str</em>, <em class="sig-param">search_criteria: str = None</em>, <em class="sig-param">timeout: float = 30.0</em>, <em class="sig-param">interval: float = 2.0</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.wait_for_element" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">wait_for_element</code><span class="sig-paren">(</span><em class="sig-param">locator: str</em>, <em class="sig-param">use_refreshing: bool = False</em>, <em class="sig-param">search_criteria: str = None</em>, <em class="sig-param">timeout: float = 30.0</em>, <em class="sig-param">interval: float = 2.0</em><span class="sig-paren">)</span> &#x2192; Any<a class="headerlink" href="#RPA.Desktop.Windows.Windows.wait_for_element" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for element to appear into the window.</p>
 <p>Can return 1 or more elements matching locator, or raises
 <cite>ElementNotFoundError</cite> if element is not found within timeout.</p>
@@ -1546,6 +1552,8 @@ applications</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>locator</strong> – name of the locator</p></li>
+<li><p><strong>use_refreshing</strong> – wait for element(s) which are not there yet e.g. listbox
+item or popups, default False</p></li>
 <li><p><strong>search_criteria</strong> – criteria by which element is matched</p></li>
 <li><p><strong>timeout</strong> – defines how long to wait for element to appear,
 defaults to 30.0 seconds</p></li>

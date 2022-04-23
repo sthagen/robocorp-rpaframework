@@ -126,6 +126,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hubspot/index.html">HubSpot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
@@ -142,6 +143,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../tables/index.html">Tables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../twitter/index.html">Twitter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../windows/index.html">Windows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../word_application/index.html">Word.Application</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Project</span></p>
@@ -291,17 +293,22 @@ and interact with files.</p>
 <dt id="RPA.FTP.FTP.abort">
 <code class="sig-name descname">abort</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#RPA.FTP.FTP.abort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Abort a file transfer in progress</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>true or false based on success or failure</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.FTP.FTP.close">
-<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#RPA.FTP.FTP.close" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.FTP.FTP.close" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close connection to the server unilaterally</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.FTP.FTP.connect">
-<code class="sig-name descname">connect</code><span class="sig-paren">(</span><em class="sig-param">host: str</em>, <em class="sig-param">port: int = 21</em>, <em class="sig-param">user: str = None</em>, <em class="sig-param">password: str = None</em>, <em class="sig-param">tls: bool = False</em>, <em class="sig-param">transfer: str = 'passive'</em>, <em class="sig-param">keyfile: str = None</em>, <em class="sig-param">certfile: str = None</em>, <em class="sig-param">timeout: int = None</em>, <em class="sig-param">source_address: Tuple[str</em>, <em class="sig-param">int] = None</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.FTP.FTP.connect" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">connect</code><span class="sig-paren">(</span><em class="sig-param">host: str</em>, <em class="sig-param">port: int = 21</em>, <em class="sig-param">user: str = None</em>, <em class="sig-param">password: str = None</em>, <em class="sig-param">tls: bool = False</em>, <em class="sig-param">transfer: str = 'passive'</em>, <em class="sig-param">keyfile: str = None</em>, <em class="sig-param">certfile: str = None</em>, <em class="sig-param">timeout: int = None</em>, <em class="sig-param">source_address: Tuple[str</em>, <em class="sig-param">int] = None</em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#RPA.FTP.FTP.connect" title="Permalink to this definition">¶</a></dt>
 <dd><p>Connect to FTP server</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -321,6 +328,9 @@ and interact with files.</p>
 <dt class="field-even">Raises</dt>
 <dd class="field-even"><p><a class="reference internal" href="#RPA.FTP.AuthenticationException" title="RPA.FTP.AuthenticationException"><strong>AuthenticationException</strong></a> – on authentication error with the server</p>
 </dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>true if the connnection completes and an error code if it fails</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -332,6 +342,9 @@ and interact with files.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dirname</strong> – name of the directory</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -342,6 +355,9 @@ and interact with files.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>filepath</strong> – path to server file</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -358,6 +374,9 @@ and interact with files.</p>
 if <cite>None</cite> will have same name as remote file</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -369,6 +388,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>filepath</strong> – path to server file</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>byte size as an int</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -378,7 +400,7 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dd><p>Get server welcome message</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>welcome message</p>
+<dd class="field-odd"><p>welcome message as a string</p>
 </dd>
 </dl>
 </dd></dl>
@@ -391,6 +413,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dirname</strong> – name of the directory</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of files present in the server directory</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -402,6 +427,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dirname</strong> – name of the directory</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -409,11 +437,16 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dt id="RPA.FTP.FTP.pwd">
 <code class="sig-name descname">pwd</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#RPA.FTP.FTP.pwd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get current working directory on the server</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>current working directory name as a string</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.FTP.FTP.quit">
-<code class="sig-name descname">quit</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#RPA.FTP.FTP.quit" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">quit</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.FTP.FTP.quit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Send QUIT command to the server and close connection</p>
 </dd></dl>
 
@@ -428,6 +461,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <li><p><strong>toname</strong> – new name for the file</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -438,6 +474,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dirname</strong> – name of the directory</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -452,19 +491,32 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>command</strong> – name of the command to send</p>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.FTP.FTP.set_ascii_mode">
-<code class="sig-name descname">set_ascii_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#RPA.FTP.FTP.set_ascii_mode" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">set_ascii_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#RPA.FTP.FTP.set_ascii_mode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set transfer mode to ASCII</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>true or false based on success or failure</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.FTP.FTP.set_binary_mode">
-<code class="sig-name descname">set_binary_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#RPA.FTP.FTP.set_binary_mode" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">set_binary_mode</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#RPA.FTP.FTP.set_binary_mode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set transfer mode to BINARY</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>true or false based on success or failure</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
@@ -474,6 +526,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>level</strong> – integer value of debug level, defaults to 0</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
 </dd>
 </dl>
 <p>0 - no debugging output
@@ -491,6 +546,9 @@ if <cite>None</cite> will have same name as remote file</p></li>
 <li><p><strong>localfile</strong> – path to file to upload</p></li>
 <li><p><strong>remotefile</strong> – name of uploaded file in the server</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>true or false based on success or failure</p>
 </dd>
 </dl>
 </dd></dl>

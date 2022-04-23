@@ -126,6 +126,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../filesystem/index.html">FileSystem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hubspot/index.html">HubSpot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
@@ -142,6 +143,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../tables/index.html">Tables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../twitter/index.html">Twitter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../windows/index.html">Windows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../word_application/index.html">Word.Application</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Project</span></p>
@@ -318,16 +320,19 @@ return values by default in <cite>RPA.Table</cite> format.</p>
 
 <dl class="method">
 <dt id="RPA.Database.Database.call_stored_procedure">
-<code class="sig-name descname">call_stored_procedure</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">params=None</em>, <em class="sig-param">sanstran=False</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.call_stored_procedure" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">call_stored_procedure</code><span class="sig-paren">(</span><em class="sig-param">name: str</em>, <em class="sig-param">params: Optional[List[str]] = None</em>, <em class="sig-param">sanstran: Optional[bool] = False</em><span class="sig-paren">)</span> &#x2192; List[str]<a class="headerlink" href="#RPA.Database.Database.call_stored_procedure" title="Permalink to this definition">¶</a></dt>
 <dd><p>Call stored procedure with name and params.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> – procedure name</p></li>
 <li><p><strong>params</strong> – parameters for the procedure as a list, defaults to None</p></li>
-<li><p><strong>sanstran</strong> – run command without an explicit transaction commit or rollback,
-defaults to False</p></li>
+<li><p><strong>sanstran</strong> – Run the query without an implicit transaction commit or
+rollback if such additional action was detected. (turned off by default)</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>list of results</p>
 </dd>
 </dl>
 <p>Example:</p>
@@ -339,7 +344,7 @@ defaults to False</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.connect_to_database">
-<code class="sig-name descname">connect_to_database</code><span class="sig-paren">(</span><em class="sig-param">module_name: str = None</em>, <em class="sig-param">database: str = None</em>, <em class="sig-param">username: str = None</em>, <em class="sig-param">password: str = None</em>, <em class="sig-param">host: str = None</em>, <em class="sig-param">port: int = None</em>, <em class="sig-param">charset: str = None</em>, <em class="sig-param">config_file: str = 'db.cfg'</em>, <em class="sig-param">autocommit: bool = False</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.connect_to_database" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">connect_to_database</code><span class="sig-paren">(</span><em class="sig-param">module_name: Optional[str] = None</em>, <em class="sig-param">database: Optional[str] = None</em>, <em class="sig-param">username: Optional[str] = None</em>, <em class="sig-param">password: Optional[str] = None</em>, <em class="sig-param">host: Optional[str] = None</em>, <em class="sig-param">port: Optional[int] = None</em>, <em class="sig-param">charset: Optional[str] = None</em>, <em class="sig-param">config_file: Optional[str] = 'db.cfg'</em>, <em class="sig-param">autocommit: Optional[bool] = False</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Database.Database.connect_to_database" title="Permalink to this definition">¶</a></dt>
 <dd><p>Connect to database using DB API 2.0 module.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -365,11 +370,14 @@ defaults to False</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.description">
-<code class="sig-name descname">description</code><span class="sig-paren">(</span><em class="sig-param">table</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.description" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">description</code><span class="sig-paren">(</span><em class="sig-param">table: str</em><span class="sig-paren">)</span> &#x2192; list<a class="headerlink" href="#RPA.Database.Database.description" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get description of the SQL table</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>table</strong> – name of the SQL table</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>database descripton as a list</p>
 </dd>
 </dl>
 <p>Example:</p>
@@ -381,7 +389,7 @@ defaults to False</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.disconnect_from_database">
-<code class="sig-name descname">disconnect_from_database</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.disconnect_from_database" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">disconnect_from_database</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Database.Database.disconnect_from_database" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close connection to SQL database</p>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c">Connect To Database</span><span class="p">    </span><span class="c">pymysql</span><span class="p">  </span><span class="c">mydb</span><span class="p">  </span><span class="c">user</span><span class="p">  </span><span class="c">pass</span><span class="p">  </span><span class="c">127.0.0.1</span><span class="p"></span>
@@ -393,15 +401,15 @@ defaults to False</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.execute_sql_script">
-<code class="sig-name descname">execute_sql_script</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">sanstran=False</em>, <em class="sig-param">encoding='utf-8'</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.execute_sql_script" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">execute_sql_script</code><span class="sig-paren">(</span><em class="sig-param">filename: str</em>, <em class="sig-param">sanstran: Optional[bool] = False</em>, <em class="sig-param">encoding: Optional[str] = 'utf-8'</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Database.Database.execute_sql_script" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute content of SQL script as SQL commands.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>filename</strong> – filepath to SQL script to execute</p></li>
-<li><p><strong>sanstran</strong> – run command without an explicit transaction commit or rollback,
-defaults to False</p></li>
-<li><p><strong>encoding</strong> – character encoding of file</p></li>
+<li><p><strong>sanstran</strong> – Run the query without an implicit transaction commit or
+rollback if such additional action was detected. (turned off by default)</p></li>
+<li><p><strong>encoding</strong> – character encoding of file (utf-8 by default)</p></li>
 </ul>
 </dd>
 </dl>
@@ -413,7 +421,7 @@ defaults to False</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.get_number_of_rows">
-<code class="sig-name descname">get_number_of_rows</code><span class="sig-paren">(</span><em class="sig-param">table</em>, <em class="sig-param">conditions=None</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.get_number_of_rows" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_number_of_rows</code><span class="sig-paren">(</span><em class="sig-param">table: str</em>, <em class="sig-param">conditions: Optional[str] = None</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#RPA.Database.Database.get_number_of_rows" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get number of rows in a table. Conditions can be given
 as arguments for WHERE clause.</p>
 <dl class="field-list simple">
@@ -422,6 +430,9 @@ as arguments for WHERE clause.</p>
 <li><p><strong>table</strong> – name of the SQL table</p></li>
 <li><p><strong>conditions</strong> – restrictions for selections, defaults to None</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>number or rows</p>
 </dd>
 </dl>
 <p>Example:</p>
@@ -433,7 +444,7 @@ as arguments for WHERE clause.</p>
 
 <dl class="method">
 <dt id="RPA.Database.Database.get_rows">
-<code class="sig-name descname">get_rows</code><span class="sig-paren">(</span><em class="sig-param">table</em>, <em class="sig-param">columns=None</em>, <em class="sig-param">conditions=None</em>, <em class="sig-param">as_table=True</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.get_rows" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_rows</code><span class="sig-paren">(</span><em class="sig-param">table</em>, <em class="sig-param">columns: Optional[str] = None</em>, <em class="sig-param">conditions: Optional[str] = None</em>, <em class="sig-param">as_table: Optional[bool] = True</em><span class="sig-paren">)</span> &#x2192; Union[List, Dict, RPA.Tables.Table, Any]<a class="headerlink" href="#RPA.Database.Database.get_rows" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get rows from table. Columns and conditions can be
 set to filter result.</p>
 <dl class="field-list simple">
@@ -447,6 +458,9 @@ means that all columns are returned</p></li>
 <cite>False</cite> means that return type would be <cite>list</cite></p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>table or list based on param as_table arguement</p>
+</dd>
 </dl>
 <p>Example:</p>
 <div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c">@{res}</span><span class="p">   </span><span class="c">Get Rows</span><span class="p">  </span><span class="c">tablename</span><span class="p">  </span><span class="c">arvo</span><span class="p"></span>
@@ -459,36 +473,68 @@ means that all columns are returned</p></li>
 
 <dl class="method">
 <dt id="RPA.Database.Database.query">
-<code class="sig-name descname">query</code><span class="sig-paren">(</span><em class="sig-param">statement: str</em>, <em class="sig-param">assertion: str = None</em>, <em class="sig-param">sanstran: bool = False</em>, <em class="sig-param">as_table: bool = True</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.query" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make a SQL query.</p>
+<code class="sig-name descname">query</code><span class="sig-paren">(</span><em class="sig-param">statement: str</em>, <em class="sig-param">assertion: Optional[str] = None</em>, <em class="sig-param">sanstran: Optional[bool] = False</em>, <em class="sig-param">as_table: Optional[bool] = True</em>, <em class="sig-param">returning: Optional[bool] = None</em><span class="sig-paren">)</span> &#x2192; Union[List, Dict, RPA.Tables.Table, Any]<a class="headerlink" href="#RPA.Database.Database.query" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute a SQL query and optionally return the execution result.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>statement</strong> – SQL statement to execute</p></li>
-<li><p><strong>assertion</strong> – assert on query result, row_count or columns.
-Works only for SELECT statements Defaults to None.</p></li>
-<li><p><strong>sanstran</strong> – run command without an explicit transaction commit or rollback,
-defaults to False</p></li>
-<li><p><strong>as_table</strong> – if result should be instance of <code class="docutils literal notranslate"><span class="pre">Table</span></code>, defaults to <cite>True</cite>
-<cite>False</cite> means that return type would be <cite>list</cite></p></li>
+<li><p><strong>statement</strong> – SQL statement to execute.</p></li>
+<li><p><strong>assertion</strong> – Assert on query result, row_count or columns.
+Works only for <cite>SELECT</cite> statements. (defaults to <cite>None</cite>)</p></li>
+<li><p><strong>sanstran</strong> – Run the query without an implicit transaction commit or
+rollback if such additional action was detected and this is set to <cite>True</cite>.
+(turned off by default, meaning that <em>commit</em> is performed on successful
+queries and <em>rollback</em> on failing ones automatically)</p></li>
+<li><p><strong>as_table</strong> – If the result should be an instance of <cite>Table</cite>, otherwise a
+<cite>list</cite> will be returned. (defaults to <cite>True</cite>)</p></li>
+<li><p><strong>returning</strong> – Set this to <cite>True</cite> if you want to have rows explicitly
+returned (instead of the query result), <cite>False</cite> otherwise. (by default a
+heuristic detects if it should return or not)</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Fetched rows when <cite>returning</cite> is <cite>True</cite> or if the heuristic decides
+that the statement should return (raw rows or as <cite>Table</cite> if <cite>as_table</cite> is
+<cite>True</cite>), otherwise the object produced by the execution is returned.</p>
+</dd>
 </dl>
-<p>Example:</p>
-<div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="c">@{res}</span><span class="p">   </span><span class="c">Query</span><span class="p">   </span><span class="c">Select firstname, lastname FROM table</span><span class="p"></span>
-<span class="c">FOR</span><span class="p">  </span><span class="c">${row}</span><span class="p">  </span><span class="c">IN</span><span class="p">  </span><span class="c">@{RES}</span><span class="p"></span>
-<span class="p">    </span><span class="c">Log</span><span class="p">   </span><span class="c">${row}</span><span class="p"></span>
-<span class="c">END</span><span class="p"></span>
-<span class="c">@{res}</span><span class="p">   </span><span class="c">Query</span><span class="p">  </span><span class="c">Select * FROM table</span><span class="p">  </span><span class="c">row_count &gt; ${EXPECTED}</span><span class="p"></span>
-<span class="c">@{res}</span><span class="p">   </span><span class="c">Query</span><span class="p">  </span><span class="c">Select * FROM table</span><span class="p">  </span><span class="c">&#39;arvo&#39; in columns</span><span class="p"></span>
-<span class="c">@{res}</span><span class="p">   </span><span class="c">Query</span><span class="p">  </span><span class="c">Select * FROM table</span><span class="p">  </span><span class="c">columns == [&#39;id&#39;, &#39;arvo&#39;]</span><span class="p"></span>
+<p><strong>Examples</strong></p>
+<p><strong>Robot Framework</strong></p>
+<div class="highlight-robotframework notranslate"><div class="highlight"><pre><span></span><span class="gh">*** Settings ***</span><span class="p"></span>
+<span class="kn">Library</span><span class="p">    </span><span class="nn">RPA.Database</span><span class="p"></span>
+
+<span class="gh">*** Tasks ***</span><span class="p"></span>
+<span class="gu">Select Values From Table</span><span class="p"></span>
+<span class="p">    @{</span><span class="nv">rows</span><span class="p">} =    </span><span class="nf">Query</span><span class="p">   </span><span class="s">SELECT id,value FROM table</span><span class="p"></span>
+<span class="p">    FOR  ${</span><span class="nv">row</span><span class="p">}  IN  @{</span><span class="nv">rows</span><span class="p">}</span>
+<span class="p">        </span><span class="nf">Log</span><span class="p">   ${</span><span class="nv">row</span><span class="p">}</span>
+<span class="p">    END</span>
+<span class="p">    @{</span><span class="nv">res</span><span class="p">} =    </span><span class="nf">Query</span><span class="p">   </span><span class="s">Select * FROM table</span><span class="p">   </span><span class="s">row_count &gt; </span><span class="p">${</span><span class="nv">EXPECTED</span><span class="p">}</span>
+<span class="p">    @{</span><span class="nv">res</span><span class="p">} =    </span><span class="nf">Query</span><span class="p">   </span><span class="s">Select * FROM table</span><span class="p">   </span><span class="s">&#39;value&#39; in columns</span><span class="p"></span>
+<span class="p">    @{</span><span class="nv">res</span><span class="p">} =    </span><span class="nf">Query</span><span class="p">   </span><span class="s">Select * FROM table</span><span class="p">   </span><span class="s">columns == [&#39;id&#39;, &#39;value&#39;]</span><span class="p"></span>
+</pre></div>
+</div>
+<p><strong>Python</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">RPA.Database</span> <span class="kn">import</span> <span class="n">Database</span>
+
+<span class="n">lib</span> <span class="o">=</span> <span class="n">Database</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">insert_and_return_names</span><span class="p">():</span>
+    <span class="n">lib</span><span class="o">.</span><span class="n">connect_to_database</span><span class="p">(</span><span class="s2">&quot;sqlite3&quot;</span><span class="p">,</span> <span class="s2">&quot;sqlite.db&quot;</span><span class="p">)</span>
+    <span class="n">lib</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;DROP TABLE IF EXISTS orders;&quot;</span><span class="p">)</span>
+    <span class="n">lib</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE orders(id INTEGER PRIMARY KEY, name TEXT);&quot;</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">lib</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+        <span class="s1">&#39;INSERT INTO orders(id, name) VALUES(1, &quot;my-1st-order&quot;),&#39;</span>
+        <span class="s1">&#39;(2, &quot;my-2nd-order&quot;) RETURNING name;&#39;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">([</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">])</span>  <span class="c1"># [&#39;my-1st-order&#39;, &#39;my-2nd-order&#39;]</span>
 </pre></div>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="RPA.Database.Database.set_auto_commit">
-<code class="sig-name descname">set_auto_commit</code><span class="sig-paren">(</span><em class="sig-param">autocommit=True</em><span class="sig-paren">)</span><a class="headerlink" href="#RPA.Database.Database.set_auto_commit" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">set_auto_commit</code><span class="sig-paren">(</span><em class="sig-param">autocommit: bool = True</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#RPA.Database.Database.set_auto_commit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set database auto commit mode.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>

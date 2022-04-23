@@ -123,6 +123,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../filesystem/index.html">FileSystem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../ftp/index.html">FTP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../http/index.html">HTTP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hubspot/index.html">HubSpot</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../images/index.html">Images</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../javaaccessbridge/index.html">JavaAccessBridge</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../json/index.html">JSON</a></li>
@@ -142,6 +143,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../tables/index.html">Tables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../tasks/index.html">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../twitter/index.html">Twitter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../windows/index.html">Windows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../word_application/index.html">Word.Application</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Project</span></p>
@@ -250,24 +252,24 @@ input is in <cite>RPA.Table</cite> format in <strong>method a</strong> and list 
 </pre></div>
 </div>
 <p>Example file <strong>orders.json</strong></p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
-    <span class="p">{</span>
-        <span class="nt">&quot;asiakas&quot;</span><span class="p">:</span> <span class="s2">&quot;0015I000002jBLIQA2&quot;</span>
-    <span class="p">},</span>
-    <span class="p">{</span>
-        <span class="nt">&quot;asiakas&quot;</span><span class="p">:</span> <span class="s2">&quot;0015I000002jBLDQA2&quot;</span>
-    <span class="p">},</span>
-<span class="p">]</span>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;asiakas&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0015I000002jBLIQA2&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;asiakas&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0015I000002jBLDQA2&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
 </pre></div>
 </div>
 <p><cite>mapping_object</cite> describes how the input data fields are mapped into Salesforce
 object attributes. In the example, the mapping defines that <cite>asiakas</cite> attribute in the
 input object is mapped into <cite>Tilaaja__c</cite> attribute of <cite>Tilaus__c</cite> custom Salesforce object.</p>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="nt">&quot;Tilaus__c&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="nt">&quot;asiakas&quot;</span><span class="p">:</span> <span class="s2">&quot;Tilaaja__c&quot;</span>
-    <span class="p">},</span>
-<span class="p">}</span>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;Tilaus__c&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;asiakas&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tilaaja__c&quot;</span><span class="w"></span>
+<span class="w">    </span><span class="p">},</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Object type could be, for example, <cite>Tilaus__c</cite>.</p>
