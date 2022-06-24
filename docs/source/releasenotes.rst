@@ -9,6 +9,25 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+15.1.4 - 23 June 2022
+---------------------
+
+- Fix *VSCode* keyword definitions in all packages (:issue:`560`). (*libspec* Python
+  modules paths)
+
+  - ``rpaframework-aws`` **3.1.1**
+  - ``rpaframework-google`` **5.0.1**
+  - ``rpaframework-pdf`` **4.0.2**
+  - ``rpaframework-windows`` **5.0.1**
+
+- Library **RPA.Desktop**: Fix docs examples returning ``Region`` elements.
+
+
+15.1.3 - 22 June 2022
+---------------------
+
+- Fix *VSCode* keyword definitions. (*libspec* Python modules paths)
+
 15.1.2 - 21 June 2022
 ---------------------
 
@@ -16,7 +35,6 @@ Release notes
   examples.
 - Library **RPA.Tables** (:pr:`492`): Keyword examples updated to be more complete.
 - Library **RPA.Excel.Files** (:pr:`493`): Doc strings and typehints updated.
-- Deprecate *Lab* references under documentation.
 
 15.1.1 - 17 June 2022
 ---------------------
