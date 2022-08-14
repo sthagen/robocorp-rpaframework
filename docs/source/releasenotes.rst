@@ -5,12 +5,35 @@ Release notes
 `Upcoming release <https://github.com/robocorp/rpaframework/projects/3#column-16713994>`_
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-- Library **RPA.FileSystem** (:pr:`597`): New ``Get File Stem`` keyword retrieving only
-  the name of a file (without its extension) from the given `path`.
-
 
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+15.8.0 - 12 Aug 2022
+--------------------
+
+- Library **RPA.Excel.Files** (:pr:`599`): Add parameter `formatting_as_empty` for keyword
+  ``Append Rows To Worksheet``, which allows appending rows to sheet with formatted cells.
+- Library **RPA.Notifier** (:pr:`603`): Fix how keyword parameters are forwarded
+
+15.7.0 - 10 Aug 2022
+--------------------
+
+- Security dependency update (``lxml`` **4.9.1**) within the following packages:
+
+  - ``rpaframework-aws`` **3.1.2**
+  - ``rpaframework-dialogs`` **3.0.1**
+  - ``rpaframework-google`` **5.0.2**
+  - ``rpaframework-recognition`` **4.0.1** (``rpaframework[cv]``)
+
+- Library **RPA.Tables** (:pr:`495`):
+
+  - New keywords: ``Filter Table With Keyword``, ``Map Column Values``. (:issue:`226`)
+  - Improved documentation. (:issue:`220`)
+  - Improved `str`/`int` row index resolving.
+
+- Library **RPA.FileSystem** (:pr:`597`): New ``Get File Stem`` keyword retrieving only
+  the name of a file (without its extension) from the given `path`.
 
 15.6.1 - 09 Aug 2022
 --------------------
