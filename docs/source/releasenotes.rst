@@ -9,6 +9,11 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+15.9.0 - 22 Aug 2022
+--------------------
+
+- Library **RPA.Database**: Add support for new Oracle connector `oracledb <https://python-oracledb.readthedocs.io/en/latest/index.html>`_
+
 15.8.1 - 19 Aug 2022
 --------------------
 
