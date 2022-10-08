@@ -9,6 +9,27 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+17.5.0 - 07 Oct 2022
+--------------------
+
+- New library **RPA.MSGraph** (:issue:`176`, :pr:`653`): This library wraps the 
+  `O365 package`_, giving robots the ability to access the Microsoft Graph API programmatically.
+
+.. _O365 package: https://pypi.org/project/O365
+
+17.4.0 - 06 Oct 2022
+--------------------
+
+- Library **RPA.Robocorp.WorkItems** (:pr:`655`): Fix behaviour when releasing FAILED
+  items with empty string `code` or `message`.
+- Library **RPA.Salesforce** (:issue:`570`): Added two new keywords: ``Set Domain`` and
+  ``Get Domain``. Enhanced documentation around the different ways to set a domain.
+
+17.3.0 - 03 Oct 2022
+--------------------
+
+- Library **RPA.Database** (:pr:`649`): Add support for new `Psycopg 3 <https://anaconda.org/conda-forge/psycopg/>`_ PostgreSQL database adapter
+
 17.2.0 - 30 Sep 2022
 --------------------
 
