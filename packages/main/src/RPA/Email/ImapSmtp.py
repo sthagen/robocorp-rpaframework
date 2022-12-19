@@ -145,10 +145,11 @@ class ImapSmtp(OAuthMixin):
 
     **Troubleshooting**
 
-    - Authentication error with Gmail - "Application-specific password required"
+    - Authentication error with GMail - "Application-specific password required"
         See: https://support.google.com/mail/answer/185833?hl=en
-    - More secure apps (XOAUTH2 protocol): Use the OAuth2 flow as in this Portal robot
-      `example-oauth-email <https://github.com/robocorp/example-oauth-email>`_
+    - More secure apps (XOAUTH2 protocol) - Use the OAuth2 flow as in this Portal robot:
+        `example-oauth-email <https://github.com/robocorp/example-oauth-email>`_
+
         Make sure to specify a `provider` (and optionally a `tenant`) when importing
         the library and planning to use this flow.
 
@@ -219,7 +220,13 @@ class ImapSmtp(OAuthMixin):
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
     ROBOT_LIBRARY_DOC_FORMAT = "REST"
 
-    TO_PROTECT = ["authorize", "set_credentials"] + OAuthMixin.TO_PROTECT
+    TO_PROTECT = [
+        "authorize",
+        "authorize_imap",
+        "authorize_smtp",
+        "set_credentials",
+        "generate_oauth_string",
+    ] + OAuthMixin.TO_PROTECT
 
     def __init__(
         self,
