@@ -843,14 +843,12 @@ class Selenium(SeleniumLibrary):
     def _arg_browser_selection(self, browser_selection: Any) -> List:
         """Parse argument for browser selection."""
         if str(browser_selection).strip().lower() == "auto":
-            order = core_webdriver.DRIVER_PREFERENCE.get(
-                platform.system(), core_webdriver.DRIVER_PREFERENCE["default"]
-            )
+            order = core_webdriver.get_browser_order()
         else:
             order = (
                 browser_selection
                 if isinstance(browser_selection, list)
-                else browser_selection.split(",")
+                else [browser.strip() for browser in browser_selection.split(",")]
             )
         return order
 

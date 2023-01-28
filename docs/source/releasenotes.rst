@@ -9,6 +9,19 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+20.1.2 - 26 Jan 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`787`): Improved browser order resolution given
+  the set env var and running OS.
+
+20.1.1 - 26 Jan 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:issue:`781`): Ability to change the default
+  search order of browsers, when using the ``Open Available Browser`` keyword, through
+  the `RPA_SELENIUM_BROWSER_ORDER` env var.
+
 20.1.0 - 19 Jan 2023
 --------------------
 
