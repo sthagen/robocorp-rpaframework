@@ -9,6 +9,88 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+21.1.0 - 09 Feb 2023
+--------------------
+
+- Library **RPA.DocumentAI.Base64AI** (:issue:`803`): Support for signature matching on
+  image documents with the following newly added keywords:
+
+  - ``Get Matching Signatures``: Detects and returns signatures and their similarity.
+  - ``Filter Matching Signatures``: Keeps relevant and alike signatures only.
+  - ``Get Signature Image``: Saves signature's image for manual inspection.
+
+  Portal example: https://github.com/robocorp/example-signature-match-assistant
+
+- Global fix with retrieving the output directory path.
+
+08 Feb 2023
+-----------
+
+- **OpenAI** (:pr:`792`) comes to **RPA Framework**! New library **RPA.OpenAI** adds four keywords covering GPT-3 text completions and DALL.E image creation.
+
+  - ``Authorize To Openai:`` Authorize with OpenAI using your API key
+  - ``Completion Create``: Keyword for creating text completions in GPT-3 API using your prompt and various arguments.
+  - ``Image Create``: Create one or more images based on a text prompt.
+  - ``Image Create Variation``: Creating one or more variations of an existing image.
+
+  .. note::
+    **RPA.OpenAI** is not included in the core ``rpaframework`` package, so please add ``rpaframework-openai==1.0.1`` as **pip** dependency
+    in your **conda.yaml**.
+
+
+
+- ``rpaframework-assistant`` **1.0.0**
+
+    - New RPA.Assistant library! Provides better development experience for various use cases where previously RPA.Dialogs would have been used.
+        - RPA.Dialogs users: `the new Migration Guide <https://github.com/robocorp/rpaframework/blob/master/packages/assistant/docs/Migration-Guide.md>`_
+        - Does not use webview. Should improve compatibility and reduce broken installs.
+        - Added mechanism to make buttons execute Python functions or Robot keywords.
+        Enables building of code executing interactive assistants.
+        - New ``Ask User `` keyword for building simple dialogs with less boilerplate.
+
+- ``rpaframework-assistant`` **1.0.1**
+
+    - macOS force stop bugfix
+
+- ``rpaframework-assistant`` **1.0.2**, **1.0.3**, **1.0.4**
+
+    - documentation building fixes and documentation updates
+
+21.0.1 - 03 Feb 2023
+--------------------
+
+- Library **RPA.Windows** (``rpaframework-windows`` **7.0.3**): Fix Windows element(s)
+  retrieval. (and dependent keywords)
+
+21.0.0 - 01 Feb 2023
+--------------------
+
+.. warning::
+  Multiple **breaking** changes below!
+
+- Library **RPA.Cloud.Azure** (:issue:`635`):
+
+  - `robocloud_vault_name` -> `robocorp_vault_name`
+  - `use_robocloud_vault` -> `use_robocorp_vault`
+  - ``Set Robocloud Vault`` -> ``Set Robocorp Vault``
+
+- Library **RPA.Cloud.Google** (:pr:`794`; ``rpaframework-google`` **7.0.0**):
+
+  - ``RPA.Robocloud.Secrets`` -> ``RPA.Robocorp.Vault``
+
+- Library **RPA.PDF** (:issue:`785`; ``rpaframework-pdf`` **7.0.1**):
+
+  - Keyword ``Find Text``:
+
+    - Supports additional parameter `ignore_case`, which if set to `True`, will make
+      the search case insensitive. (switch it **on** if you experience a different
+      behaviour)
+    - Adds `subtext:` strategy in the passed `locator` which checks for a substring
+      instead of the whole text to match.
+
+  - New related Portal example for parsing PDF invoices:
+    https://github.com/robocorp/example-parse-pdf-invoice
+
 20.1.2 - 26 Jan 2023
 --------------------
 
