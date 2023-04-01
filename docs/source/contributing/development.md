@@ -5,7 +5,7 @@
 Setup should be easy, as all our packages are isolated in their own _.venv_ maintained
 by [Poetry](https://python-poetry.org/). To control such venvs, including the
 _meta_ venv (which is the venv associated to the project bringing in all the packages
-together), a [invocations](../../../invocations) set of helpers are used with the
+together), an [invocations](../../../invocations) set of helpers are used with the
 `inv[oke]` command, based on the supported [tasks](../../../tasks.py). (file found in
 every project)
 
@@ -269,11 +269,11 @@ adding a new library, so here's a list with all the areas of interest:
   - Update the [meta](../../../pyproject.toml) package as well to get a fresh
     _poetry.lock_ file if you're planning to release soon, right after the merge.
 - The changes you've done should be summarized in a human-friendly way in the
-  [release notes](../../../docs/source/releasenotes.rst), more about in the
-  [**Release**](#release) section.
+  [release notes](../../../docs/source/releasenotes.rst). (read more in the
+  [**Release**](#release-internal-developers-only) section).
 - Adding a new library (additional requirements):
-  - Ensure the new `RPA.<Library>` is now visible in the [README](../../../README.rst)
-    as well. (under **Libraries**)
+  - Ensure the new `RPA.<Library>` is now visible in the
+    [README](../../../packages/main/README.rst) as well. (under **Libraries**)
   - There's a documentation entry under [libraries](../../../docs/source/libraries) as
     well. (follow the existing pattern)
   - Add exclusion rule in _invocations_' [_docs_](../../../invocations/docs.py)
@@ -281,6 +281,9 @@ adding a new library, so here's a list with all the areas of interest:
     to see. This is required when a library is split into multiple modules, therefore
     the docs generation process will include only the resources collated in the central
     package, so you won't run into duplicates given such a split.
+  - Finally, a library entry should be added under our private **documentation** repo
+    [config file](https://github.com/robocorp/documentation/blob/master/config/libraries.ts).
+
 
 ### Linting & documentation
 
