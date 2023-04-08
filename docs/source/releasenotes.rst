@@ -9,6 +9,30 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+22.5.1 - 07 Apr 2023
+--------------------
+
+- Library **RPA.Windows** (``rpaframework-windows`` **7.3.2**; :issue:`913`):
+
+  - Keywords ``[Double|Right|Middle ]Click`` will raise `ActionNotPossible` if the
+    element is not visible during clicking. (thus clicking wouldn't happen at all)
+  - Main library and various keywords documentation fixes.
+
+- Library **RPA.PDF** (``rpaframework-pdf`` **7.1.5**) (:pr:`914`): Fix "TypeError:
+  cannot pickle 'dict_keys' object" bug with the ``HTML To PDF`` keyword.
+
+22.5.0 - 05 Apr 2023
+--------------------
+
+- Library **RPA.Windows** (``rpaframework-windows`` **7.3.0**; :pr:`912`):
+
+  - Our Windows elements recorder (`windows-recorder`) supports `path:` strategy
+    display when run with verbosity on. (``-v`` flag)
+  - Keyword ``Print Tree`` now displays the `path:` strategy locator alongside printed
+    controls and flattened-by-level returned elements.
+  - Keyword ``Set Value`` supports value validation customization through the
+    `validator` parameter.
+
 04 Apr 2023
 -----------
 
