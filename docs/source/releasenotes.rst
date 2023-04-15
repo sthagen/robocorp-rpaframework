@@ -9,6 +9,22 @@ Release notes
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+22.5.2 - 13 Apr 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`916`):
+
+  - Takes into use the latest Selenium (**4.8.3** at the time of the release) and its
+    logging fixes. (:issue:`883`)
+  - Fixes scheme ensuring bug during not provided URLs. (:issue:`586`)
+  - Fixes `headless` mode setting with newer browsers and enables more browser features
+    when running in this mode. (:issue:`919`)
+  - Ensures keyword ``Screenshot`` works and logs messages as expected. (logs aren't
+    polluted with raw image data on levels equal or greater than `INFO` and it returns
+    the final output image path; :issue:`920`)
+  - Takes into use the latest webdriver-manager fixes given ``rpaframework-core``
+    **11.0.1**.
+
 22.5.1 - 07 Apr 2023
 --------------------
 
@@ -20,6 +36,19 @@ Release notes
 
 - Library **RPA.PDF** (``rpaframework-pdf`` **7.1.5**) (:pr:`914`): Fix "TypeError:
   cannot pickle 'dict_keys' object" bug with the ``HTML To PDF`` keyword.
+
+  .. note::
+    This ``rpaframework`` version requires at least the following library versions (if
+    you have such dependencies already listed in your *conda.yaml*), although we
+    recommend upgrading to the latest found in `PyPI <https://pypi.org/>`_:
+
+      - ``rpaframework-assistant`` **2.2.1**
+      - ``rpaframework-aws`` **5.2.8**
+      - ``rpaframework-dialogs`` **4.0.4** (deprecated)
+      - ``rpaframework-google`` **7.0.2**
+      - ``rpaframework-pdf`` **7.1.4**
+      - ``rpaframework-recognition`` **5.1.2**
+      - ``rpaframework-windows`` **7.3.0**
 
 22.5.0 - 05 Apr 2023
 --------------------
