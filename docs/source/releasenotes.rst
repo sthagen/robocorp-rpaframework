@@ -2,12 +2,68 @@ Release notes
 =============
 
 
+Latest versions
++++++++++++++++
+
+.. include:: packages.rst
+   :start-after: include-packages
+
+
 `Upcoming release <https://github.com/robocorp/rpaframework/projects/3#column-16713994>`_
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+25.0.1 - 11 Aug 2023
+--------------------
+
+- Library **RPA.DocumentAI.Base64AI** (:issue:`719`):
+
+  - Fix signature matching API.
+  - Better documentation and errors.
+
+- Library **RPA.PDF** (:pr:`1051`; ``rpaframework-pdf`` **7.1.6**):
+
+  - Make the `reader` parameter optional in the ``Save PDF`` keyword.
+  - Fix PDF fields retrieval, value decoding and setting. (:issue:`872`)
+
+25.0.0 - 10 Aug 2023
+--------------------
+
+- Library **RPA.Salesforce** (:pr:`1003`): Add keywords
+  ``Auth with connected app`` and ``Execute APEX``.
+- Library **RPA.Email.ImapSmtp** (:pr:`1054`): Fix handling of `To`, `Cc` and `Bcc`
+  fields in `Send Message` keyword.
+
+24.1.2 - 27 Jul 2023
+--------------------
+
+- Library **RPA.Robocorp.Storage** (``robocorp-storage`` **0.3.2**): Fix bug when
+  retrieving assets containing spaces in their names.
+
+24.1.1 - 26 Jul 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`1035`; ``rpaframework-core`` **11.0.5**):
+  Fix `chromedriver` download issues with Chrome **115** and over.
+
+24.1.0 - 25 Jul 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`1021`; ``rpaframework-core`` **11.0.4**):
+
+  - Correctly handles and downloads a valid existing webdriver version when there's a
+    need for one.
+  - Ability to provide a default browser binary location with the
+    `RPA_SELENIUM_BINARY_LOCATION` environment variable. (useful when the webdriver
+    isn't able to automatically detect and start your system browser)
+  - Portal example taking these into use:
+    https://robocorp.com/portal/robot/robocorp/example-google-image-search
+
+- Library **RPA.Browser.Playwright**: Renders documentation for
+  ``robotframework-browser==17.1.0``.
 
 24.0.0 - 18 Jul 2023
 --------------------
