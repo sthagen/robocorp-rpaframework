@@ -12,9 +12,94 @@ Latest versions
 `Upcoming release <https://github.com/robocorp/rpaframework/projects/3#column-16713994>`_
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+24 Aug 2023
+-----------
+
+- Library **RPA.Cloud.Google** (``rpaframework-google`` **7.1.2**):
+
+  - Fix how OAuth token is updated into Control Room Vault.
+
+- Library **RPA.Cloud.Google** (:pr:`1057`; ``rpaframework-google`` **7.1.1**):
+
+  - Fix mimetype handling in overall and for Excel documents in ``Send Message``
+    keyword. (:issue:`994`)
+  - Improve token handling in authentication flow.
+
+26.1.0 - 24 Aug 2023
+--------------------
+
+- General update on *all* packages (:pr:`950`):
+
+  - All packages will be taking into use the latest `robotframework`
+    version (**6.1.1**).
+  - The minimum Python version is set to **3.8**.
+
+  - All new package versions are listed below.
+
+    - ``rpaframework-assistant`` **3.0.0** (additional release note included below)
+    - ``rpaframework-aws`` **5.3.0**
+    - ``rpaframework-google`` **7.1.0**
+    - ``rpaframework-openai`` **1.3.0**
+    - ``rpaframework-pdf`` **7.2.0**
+    - ``rpaframework-recognition`` **5.2.0**
+    - ``rpaframework-windows`` **7.4.0**
+
+  - Library **RPA.Assistant** (:pr:`1068`; ``rpaframework-assistant`` **3.0.0**):
+
+    - Fix ``Add Date Input`` validation and return value as `Date` object instead of
+      a string.
+    - Add Python examples for every keyword.
+
+26.0.3 - 24 Aug 2023
+--------------------
+
+- Library **RPA.Browser.Selenium**: Properly show webdriver errors in case the initial
+  default is not found in PATH.
+
+26.0.2 - 24 Aug 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`1069`): Use an already existing webdriver
+  found in PATH if present. Only if such a default expected executable isn't found, a
+  newly cached one will be downloaded and used. (affects all supported browsers)
+
+26.0.1 - 22 Aug 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:issue:`1059`): Fix webdriver management and
+  automation issues related to Edge in IE mode. Updated Portal example:
+  https://robocorp.com/portal/robot/robocorp/example-ie-mode-edge
+
+26.0.0 - 18 Aug 2023
+--------------------
+
+- Library **RPA.Browser.Selenium** (:pr:`1058`):
+
+  - Fixed `options` passing with Firefox. (when a binary location is specified)
+
+- General improvements to **RPA.*.Application** libraries (:issue:`1055`):
+
+  - *All*: Better error handling (COM -> runtime), improved generic docs and
+    troubleshooting guiding, fixed document closing (if was closed already) and app
+    open/quit management, improved warnings and logging, file paths are tested for
+    existence when operating on documents and raise errors in their absence.
+
+  - **Excel**:
+
+    - Removed deprecated parameter `tabname` from ``Add New Sheet``. (use `sheetname`)
+    - ``Save Excel As`` raises when there's no workbook open. (use ``Open Workbook``
+      first)
+
+  - **Outlook**:
+
+    - Removed deprecated keywords: ``Send Message`` (use ``Send Email``) and
+      ``Wait For Message`` (use ``Wait For Email``).
+
+  .. warning::
+    **Breaking** changes in the **Application** libraries listed above.
 
 25.0.1 - 11 Aug 2023
 --------------------
