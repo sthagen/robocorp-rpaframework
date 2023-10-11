@@ -16,6 +16,37 @@ Latest versions
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+27.4.1 - 11 Oct 2023
+--------------------
+
+- Fix keyword ``Email To Document`` in library **RPA.Email.ImapSmtp** by restricting
+  the ``python-docx`` package version to the maximum working one.
+
+  .. warning::
+    This affected both this library and **RPA.Robocorp.WorkItems** due to a slipped
+    sub-dependency breaking change. We strongly suggest to upgrade to the latest
+    ``rpaframework`` in order to benefit from the fix, and if you're not ready for it
+    yet, pin in your `conda.yaml` ``python-docx==0.8.11`` for the time being.
+
+27.4.0 - 11 Oct 2023
+--------------------
+
+- Library **RPA.JavaAccessBridge** (:issue:`1060`; ``java-access-bridge-wrapper``
+  **1.1.0**):
+
+  - New library import parameter `max_depth` which limits the maximum level the search
+    will go when selecting a window and building the element tree. With
+    `disable_refresh` one can disable any implicit global refresh when this is set to
+    `False`.
+  - Add new keyword ``Refresh Element`` for explicitly refreshing elements. (useful
+    when callbacks are disabled and new data appears in the app)
+  - Enhance ``Read Table`` with `visible_only` parameter which controls what kind of
+    children (inner cells of the table) to return. The number of columns is correctly
+    detected and the table automatically refreshes when callbacks are disabled and the
+    global refresh is enabled.
+  - Bugfixes in the following keywords: ``Click Element``,
+    ``Set Display Scale Factor``, ``Get Element Actions``.
+
 27.3.1 - 10 Oct 2023
 --------------------
 
