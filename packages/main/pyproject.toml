@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rpaframework"
-version = "27.4.1"
+version = "27.4.2"
 description = "A collection of tools and libraries for RPA"
 authors = ["RPA Framework <rpafw@robocorp.com>"]
 license = "Apache-2.0"
@@ -40,7 +40,7 @@ rpaframework-core = "^11.2.1"
 rpaframework-pdf = "^7.3.0"
 rpaframework-windows = { version = "^7.4.0", platform = "win32" }
 java-access-bridge-wrapper = "^1.1.0"
-robocorp-storage = "^1.0.0"
+robocorp-storage = "^1.0.1"
 jsonpath-ng = "^1.5.2"
 robotframework = ">=4.0.0,!=4.0.1,!=6.1.0,<7.0.0"
 robotframework-sapguilibrary = { version = "^1.1", platform = "win32" }
@@ -76,7 +76,8 @@ click = "^8.1.2"
 PyYAML = ">=5.4.1,<7.0.0"
 tenacity = "^8.0.1"
 htmldocx = "^0.0.6"
-python-docx = "^0.8.11"
+python-docx = "^0.8.11"  # htmldocx
+beautifulsoup4 = "^4.7.0"  # htmldocx, O365
 hubspot-api-client = "^4.0.6"
 pyotp = "^2.6.0"
 importlib-metadata = "^4.13.0"
