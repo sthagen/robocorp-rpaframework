@@ -16,6 +16,12 @@ Latest versions
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+30.0.2 - 20 Mar 2025
+---------------------
+
+- Update ``rpaframework-pdf`` to version **8.0.1**. Fix issue with image files not being added to PDF.
+  Fix in ``RPA.PDF.add_files_to_pdf`` keyword (:pr:`1218`)
+
 
 30.0.1 - 06 Mar 2025
 --------------------
@@ -37,7 +43,7 @@ Latest versions
 - ``rpaframework-windows`` **9.0.0**
 
 31 Dec 2024
---------------------
+-----------
 
 - Update ``rpaframework-aws`` to version **5.3.4**. Security update for ``boto3`` package.
 
