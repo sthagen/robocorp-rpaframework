@@ -19,11 +19,11 @@ jobs:
       SETUPTOOLS_USE_DISTUTILS: stdlib
       INVOKE_IS_CI_CD: 1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
           python-version: "3.9"
       - name: Upgrade pip
@@ -52,7 +52,7 @@ jobs:
         run: invoke docs.python-markdown
       - name: Publish HTML documentation
         if: success()
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           publish_branch: gh-pages
           publish_dir: docs/build/html/
