@@ -1,18 +1,10 @@
 name: rpaframework-assistant
 
+# Disabled: robocorp-flet has incompatible httpx pin (requires <0.24.0)
+# conflicting with rpaframework-core (requires >=0.28.1).
+# Re-enable after replacing robocorp-flet dependency.
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'packages/assistant/**'
-      - '.github/workflows/assistant.yaml'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'packages/assistant/**'
-      - '.github/workflows/assistant.yaml'
+  workflow_dispatch: # manual trigger only
 
 defaults:
   run:
@@ -58,13 +50,13 @@ jobs:
             os: ubuntu-latest
           - name: "macos-py39"
             python: "3.9"
-            os: macos-13
+            os: macos-latest
           - name: "macos-py310"
             python: "3.10"
-            os: macos-13
+            os: macos-latest
           - name: "macos-py311"
             python: "3.11"
-            os: macos-13
+            os: macos-latest
 
     env:
       INVOKE_IS_CI_CD: 1
