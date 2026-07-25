@@ -12,7 +12,17 @@ Latest versions
 `Upcoming release <https://github.com/robocorp/rpaframework/projects/3#column-16713994>`_
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-No changes planned yet for the next release.
+- **Security:** ``RPA.Archive``: Fix a Zip Slip path traversal vulnerability (CWE-22) in
+  ``Extract Archive`` — archive members with path traversal sequences (e.g.
+  ``../../evil.py``) could previously be extracted outside the requested destination
+  directory. Extraction now validates that every member resolves within the destination
+  before extracting, raising ``ValueError`` otherwise (fixes :issue:`1339`, :issue:`1340`).
+
+- **Security:** Bump ``soupsieve`` ≥2.8.4 (HIGH — memory exhaustion via large
+  comma-separated selector lists, CVE-2026-49476) in the root and ``rpaframework``
+  lock files.
+
+- ``rpaframework`` **32.0.2**
 
 `Released <https://pypi.org/project/rpaframework/#history>`_
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
