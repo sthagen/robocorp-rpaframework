@@ -188,6 +188,11 @@ class MatchObject:
     PATH_SEP = "|"  # path locator index separator
     QUOTE = '"'  # enclosing quote character (double-quote; single-quote also accepted)
     _LOCATOR_REGEX = re.compile(r"""\S*"[^"]+"|\S*'[^']+'|\S+""", re.IGNORECASE)
+    # Matches a stray `locator=` keyword-argument prefix (optionally followed by an
+    # unmatched quote character) that can end up glued onto the strategy token, e.g.
+    # when a value like `locator='executable:...` gets swallowed whole by
+    # `_LOCATOR_REGEX` due to its unclosed quote.
+    _STRAY_LOCATOR_PREFIX_REGEX = re.compile(r"^locator=['\"]?", re.IGNORECASE)
     _LOGGER = logging.getLogger(__name__)
 
     locators: List[Tuple] = field(default_factory=list)
@@ -232,8 +237,19 @@ class MatchObject:
             default_values.append(part_text)
             return
 
-        control_strategy = self._WINDOWS_LOCATOR_STRATEGIES.get(strategy)
+        stray_match = self._STRAY_LOCATOR_PREFIX_REGEX.match(strategy)
+        clean_strategy = strategy[stray_match.end() :] if stray_match else strategy
+
+        control_strategy = self._WINDOWS_LOCATOR_STRATEGIES.get(clean_strategy)
         if control_strategy:
+            if stray_match:
+                self._LOGGER.warning(
+                    "Locator part %r looked malformed (stray %r prefix); using"
+                    " strategy %r instead.",
+                    part_text,
+                    stray_match.group(),
+                    clean_strategy,
+                )
             if default_values:
                 add_locator("Name", " ".join(default_values))
                 default_values.clear()
@@ -386,7 +402,18 @@ class LocatorMethods(WindowsContext):
         search_params = search_params.copy()  # to keep idempotent behaviour
         win_value = search_params.pop(param_type)
         window_list = self.ctx.list_windows()
-        matches = [win for win in window_list if win[win_type] == win_value]
+        if param_type == "executable":
+            # Windows file names are case-insensitive, so `executable:notepad.exe`
+            # has to match a process listed as `Notepad.exe`. Only the executable
+            # is compared this way; `handle` is numeric and matched as-is.
+            win_value_folded = str(win_value).casefold()
+            matches = [
+                win
+                for win in window_list
+                if str(win[win_type]).casefold() == win_value_folded
+            ]
+        else:
+            matches = [win for win in window_list if win[win_type] == win_value]
         if not matches:
             raise WindowControlError(
                 f"Could not locate window with {param_type} {win_value!r}"

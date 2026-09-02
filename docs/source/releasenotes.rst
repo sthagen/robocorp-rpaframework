@@ -12,20 +12,58 @@ Latest versions
 `Upcoming release <https://github.com/robocorp/rpaframework/projects/3#column-16713994>`_
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+No changes planned yet for the next release.
+
+`Released <https://pypi.org/project/rpaframework/#history>`_
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+23 Aug 2026
+-----------
+
+- **Breaking:** Remove the long-deprecated ``RPA.Desktop.Windows`` library (pywinauto-based).
+  It has emitted a deprecation warning pointing to ``RPA.Windows`` since being deprecated in
+  favor of it, and is no longer maintained. Use ``RPA.Windows`` for all Windows UI automation
+  going forward (fixes :issue:`1322`).
 - **Security:** ``RPA.Archive``: Fix a Zip Slip path traversal vulnerability (CWE-22) in
   ``Extract Archive`` — archive members with path traversal sequences (e.g.
   ``../../evil.py``) could previously be extracted outside the requested destination
   directory. Extraction now validates that every member resolves within the destination
   before extracting, raising ``ValueError`` otherwise (fixes :issue:`1339`, :issue:`1340`).
-
+- ``rpaframework-core``: Fix the Windows locator parser silently mis-tokenizing a strategy
+  when the locator value contained a stray ``locator=`` prefix or an unmatched quote
+  character (e.g. produced a bogus ``locator='executable`` strategy instead of recognizing
+  ``executable:``), with a clearer warning surfaced when this happens (fixes :issue:`1323`).
+- ``RPA.Desktop``: ``Highlight Elements`` now returns the list of matched element regions
+  instead of ``None``, exposing coordinates that were already being computed internally
+  (fixes :issue:`1324`).
+- ``rpaframework-core``: Match ``executable:`` locators case-insensitively. Windows file
+  names are case-insensitive, but the comparison was not, so ``executable:notepad.exe``
+  could not find a process that Windows lists as ``Notepad.exe`` — as it does on Windows 11.
+  ``handle:`` matching is numeric and is unchanged.
 - **Security:** Bump ``soupsieve`` ≥2.8.4 (HIGH — memory exhaustion via large
   comma-separated selector lists, CVE-2026-49476) in the root and ``rpaframework``
   lock files.
+- **Security:** Bump ``pillow`` ≥12.3.0 (HIGH — heap out-of-bounds write in
+  ``ImageCmsTransform.apply()``, CVE-2026-59205; decompression-bomb DoS in
+  ``PdfParser.PdfStream.decode()``, CVE-2026-59200) across all packages.
+- **Security:** Bump ``cryptography`` ≥50.0.0 (HIGH — Bleichenbacher oracle in PKCS#7
+  ``EnvelopedData`` decryption, CVE-2026-69247) across all packages.
+- **Security:** Bump ``pypdf`` ≥6.15.0 (MEDIUM — large memory usage for large
+  ``/ToUnicode`` streams, CVE-2026-71870) in ``rpaframework-pdf``.
+- **Security:** Bump ``pyasn1`` ≥0.6.4 (HIGH — BER/CER/DER decoder DoS via unbounded
+  long-form tag IDs, CVE-2026-59884) and ``httplib2`` ≥0.32.0 (HIGH — decompression-bomb
+  DoS via unbounded gzip/deflate handling, CVE-2026-59939) in ``rpaframework-google``.
+- **Security:** Bump ``setuptools`` ≥83.0.0 (MEDIUM — ``MANIFEST.in`` exclusion bypass via
+  Unicode normalization collision, CVE-2026-59890) in ``rpaframework-sema4ai``.
+- ``rpaframework``: Require ``rpaframework-core`` ≥13.0.2, so a fresh install cannot
+  resolve a core that predates the Windows locator fixes ``RPA.Windows`` relies on.
 
-- ``rpaframework`` **32.0.2**
-
-`Released <https://pypi.org/project/rpaframework/#history>`_
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+- ``rpaframework-core`` **13.0.3**
+- ``rpaframework-pdf`` **11.0.2**
+- ``rpaframework-recognition`` **8.0.2**
+- ``rpaframework-google`` **12.0.1**
+- ``rpaframework-sema4ai`` **1.1.1**
+- ``rpaframework`` **33.0.1**
 
 29 Jun 2026
 -----------
